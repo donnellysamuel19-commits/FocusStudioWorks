@@ -19,7 +19,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase/config';
-import { LayoutDashboard, History, LogOut, PlusCircle, BookOpen } from 'lucide-react';
+import { LayoutDashboard, History, LogOut, PlusCircle, BookOpen, ShieldAlert } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
@@ -28,7 +28,7 @@ export default function ProtectedLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { user, loading } = useAuth();
+  const { user, loading, isDevBypass } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -51,6 +51,10 @@ export default function ProtectedLayout({
   }
   
   const handleSignOut = async () => {
+    if (isDevBypass) {
+        router.push('/');
+        return;
+    }
     await signOut(auth);
     router.push('/');
   };
@@ -124,7 +128,15 @@ export default function ProtectedLayout({
             </DropdownMenu>
           </div>
         </header>
-        <main className="flex-1 p-4 md:p-6 lg:p-8">{children}</main>
+        <main className="flex-1 p-4 md:p-6 lg:p-8">
+            {isDevBypass && (
+                <div className="mb-4 flex items-center gap-x-3 rounded-lg border border-yellow-500/50 bg-yellow-500/10 p-3 text-sm text-yellow-500">
+                    <ShieldAlert className="h-5 w-5 flex-shrink-0" />
+                    <p className="font-medium">DEV MODE: Firebase Auth bypass enabled.</p>
+                </div>
+            )}
+            {children}
+        </main>
       </SidebarInset>
     </SidebarProvider>
   );

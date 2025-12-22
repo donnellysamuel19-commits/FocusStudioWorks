@@ -12,6 +12,7 @@ import { auth } from '@/lib/firebase/config';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
+import { useAuth } from '@/lib/auth';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email.' }),
@@ -22,6 +23,7 @@ export function LoginForm() {
   const { toast } = useToast();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const { isDevBypass } = useAuth();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -33,13 +35,14 @@ export function LoginForm() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
-    if (!auth) {
+    if (isDevBypass || !auth) {
         toast({
             variant: 'destructive',
-            title: 'Configuration Error',
-            description: 'Firebase is not configured. Please contact the administrator.',
+            title: 'Auth Bypass Enabled',
+            description: 'Cannot log in while in developer bypass mode.',
         });
         setIsLoading(false);
+        router.push('/app/dashboard');
         return;
     }
     try {
