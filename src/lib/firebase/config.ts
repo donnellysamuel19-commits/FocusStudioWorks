@@ -11,8 +11,20 @@ const firebaseConfig: FirebaseOptions = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-const auth = getAuth(app);
-const db = getFirestore(app);
+// Check if all required environment variables are present
+const isConfigValid = 
+    firebaseConfig.apiKey &&
+    firebaseConfig.authDomain &&
+    firebaseConfig.projectId;
+
+const app = !getApps().length && isConfigValid ? initializeApp(firebaseConfig) : (getApps().length > 0 ? getApp() : null);
+const auth = app ? getAuth(app) : null;
+const db = app ? getFirestore(app) : null;
+
+// Throw an error in development if the config is invalid
+if (process.env.NODE_ENV !== 'production' && !isConfigValid) {
+    console.error("Firebase configuration is invalid. Please check your .env.local file.");
+}
+
 
 export { app, auth, db };
