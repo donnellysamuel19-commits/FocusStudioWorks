@@ -37,7 +37,7 @@ export function SignupForm() {
         toast({
             variant: 'destructive',
             title: 'Configuration Error',
-            description: 'Firebase is not configured correctly. Please check your environment variables.',
+            description: 'Firebase is not configured. Please contact the administrator.',
         });
         setIsLoading(false);
         return;
