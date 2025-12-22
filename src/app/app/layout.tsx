@@ -19,7 +19,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase/config';
-import { LayoutDashboard, History, LogOut, PlusCircle, BookOpen, ShieldAlert } from 'lucide-react';
+import { LayoutDashboard, History, LogOut, PlusCircle, ShieldAlert } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
@@ -78,11 +78,6 @@ export default function ProtectedLayout({
             <SidebarMenuItem>
               <SidebarMenuButton asChild isActive={pathname === '/app/dashboard'}>
                 <Link href="/app/dashboard"><LayoutDashboard />Dashboard</Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-             <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={pathname.startsWith('/app/assignments')}>
-                <Link href="/app/dashboard"><BookOpen />Assignments</Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
