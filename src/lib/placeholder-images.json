@@ -1,3 +1,10 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "landing-hero",
+      "description": "A focused student working at a clean desk with a laptop and notebook.",
+      "imageUrl": "https://images.unsplash.com/photo-1758685848758-74747f4f0727?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxmb2N1c2VkJTIwc3R1ZGVudHxlbnwwfHx8fDE3NjY0MDc0NzN8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "focused student"
+    }
+  ]
 }
