@@ -29,13 +29,12 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 export default function NewOrEditSprintPage({ params }: { params: { id: string, sessionId?: string } }) {
+  const { id: assignmentId, sessionId } = params;
   const { toast } = useToast();
   const router = useRouter();
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isPageLoading, setPageLoading] = useState(true);
-  const assignmentId = params.id;
-  const sessionId = params.sessionId;
   const isEditMode = !!sessionId;
 
   const form = useForm<FormValues>({
@@ -85,12 +84,15 @@ export default function NewOrEditSprintPage({ params }: { params: { id: string, 
         await updateStudySession(sessionId, sessionData);
         toast({ title: 'Sprint Updated', description: 'Your changes have been saved.' });
       } else {
-        await addStudySession(user.uid, assignmentId, sessionData);
-        toast({ title: 'Sprint Defined', description: 'Your new sprint has been created and is pending.' });
+        const newSessionId = await addStudySession(user.uid, assignmentId, sessionData);
+        toast({ title: 'Sprint Defined', description: 'Your new sprint is ready to start.' });
+        router.push(`/app/sprint/${newSessionId}`);
+        return;
       }
       router.push(`/app/assignments/${assignmentId}`);
-      router.refresh(); // To ensure the assignment page shows the new/updated data
+      router.refresh();
     } catch (error) {
+      console.error(error);
       toast({ variant: 'destructive', title: 'Error', description: `Could not ${isEditMode ? 'update' : 'create'} sprint.` });
       setIsLoading(false);
     }
@@ -194,3 +196,5 @@ export default function NewOrEditSprintPage({ params }: { params: { id: string, 
     </div>
   );
 }
+
+    

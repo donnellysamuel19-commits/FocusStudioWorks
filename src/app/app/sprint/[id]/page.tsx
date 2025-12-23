@@ -13,13 +13,13 @@ import { serverTimestamp } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function SprintConfirmationPage({ params }: { params: { id: string } }) {
+  const { id: sessionId } = params;
   const { user } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const [session, setSession] = useState<StudySession | null>(null);
   const [loading, setLoading] = useState(true);
   const [isStarting, setIsStarting] = useState(false);
-  const sessionId = params.id;
 
   useEffect(() => {
     if (user && sessionId) {
@@ -29,13 +29,14 @@ export default function SprintConfirmationPage({ params }: { params: { id: strin
             setSession(sessionData);
           } else {
              // Redirect if session not found, not owned, or not pending
+            toast({ variant: 'destructive', title: 'Error', description: 'Pending sprint not found.' });
             router.replace('/app/dashboard');
           }
         })
         .catch(console.error)
         .finally(() => setLoading(false));
     }
-  }, [user, sessionId, router]);
+  }, [user, sessionId, router, toast]);
 
   const handleStartSprint = async () => {
     if (!session) return;
@@ -100,3 +101,5 @@ export default function SprintConfirmationPage({ params }: { params: { id: strin
     </div>
   );
 }
+
+    

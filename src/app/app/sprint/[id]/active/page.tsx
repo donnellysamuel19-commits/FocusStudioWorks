@@ -10,44 +10,51 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { serverTimestamp } from 'firebase/firestore';
 import { Loader2, CheckCircle, XCircle, Target, Rocket } from 'lucide-react';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { AlertDialogTrigger } from '@radix-ui/react-alert-dialog';
 
 export default function ActiveSprintPage({ params }: { params: { id: string } }) {
+  const { id: sessionId } = params;
   const { user } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const [session, setSession] = useState<StudySession | null>(null);
   const [loading, setLoading] = useState(true);
-  const [timeLeft, setTimeLeft] = useState(0);
+  const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [blockerNote, setBlockerNote] = useState('');
-  const sessionId = params.id;
 
   useEffect(() => {
-    if (user && sessionId) {
-      getStudySession(sessionId)
-        .then(sessionData => {
-          if (sessionData && sessionData.userId === user.uid && sessionData.state === 'Active' && sessionData.startTime) {
-            setSession(sessionData);
-            const elapsed = (Date.now() - sessionData.startTime.toDate().getTime()) / 1000;
-            const remaining = sessionData.durationMinutes * 60 - elapsed;
-            setTimeLeft(Math.max(0, remaining));
-          } else {
-            router.replace('/app/dashboard');
-          }
-        })
-        .catch(console.error)
-        .finally(() => setLoading(false));
-    }
-  }, [user, sessionId, router]);
+    if (!user || !sessionId) return;
+    
+    getStudySession(sessionId)
+      .then(sessionData => {
+        if (sessionData && sessionData.userId === user.uid && sessionData.state === 'Active' && sessionData.startTime) {
+          setSession(sessionData);
+          const elapsedSeconds = (Date.now() - sessionData.startTime.toDate().getTime()) / 1000;
+          const initialRemaining = sessionData.durationMinutes * 60 - elapsedSeconds;
+          setTimeLeft(Math.max(0, initialRemaining));
+        } else {
+          toast({ variant: 'destructive', title: 'Error', description: 'Active sprint not found.' });
+          router.replace('/app/dashboard');
+        }
+      })
+      .catch(error => {
+        console.error("Failed to load sprint data:", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to load the sprint data.' });
+        router.replace('/app/dashboard');
+      })
+      .finally(() => setLoading(false));
+    
+  }, [user, sessionId, router, toast]);
 
   useEffect(() => {
-    if (timeLeft <= 0 || !session) return;
+    if (timeLeft === null || timeLeft <= 0) return;
     const timer = setInterval(() => {
-      setTimeLeft(prev => prev - 1);
+      setTimeLeft(prev => (prev ? prev - 1 : 0));
     }, 1000);
     return () => clearInterval(timer);
-  }, [timeLeft, session]);
+  }, [timeLeft]);
   
   const handleEndSprint = useCallback(async (outcome: 'Completed' | 'Abandoned', optionalBlockerNote?: string) => {
     if (!session) return;
@@ -55,22 +62,23 @@ export default function ActiveSprintPage({ params }: { params: { id: string } })
         await updateSessionState(sessionId, outcome, {
             outcome,
             endTime: serverTimestamp(),
-            optionalBlockerNote,
+            ...(optionalBlockerNote && { optionalBlockerNote }),
         });
         toast({ title: `Sprint ${outcome}`, description: "Great work! Take a short break." });
         router.push(`/app/assignments/${session.assignmentId}`);
+        router.refresh();
     } catch(error) {
         toast({ variant: 'destructive', title: 'Error', description: 'Could not end sprint.' });
     }
   }, [session, sessionId, router, toast]);
 
   useEffect(() => {
-    if (timeLeft <= 0 && session) {
+    if (timeLeft !== null && timeLeft <= 0 && session) {
         handleEndSprint('Completed');
     }
   }, [timeLeft, session, handleEndSprint]);
 
-  if (loading || !session) {
+  if (loading || session === null || timeLeft === null) {
     return (
       <div className="flex h-full w-full items-center justify-center">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -138,3 +146,5 @@ export default function ActiveSprintPage({ params }: { params: { id: string } })
     </div>
   );
 }
+
+    
