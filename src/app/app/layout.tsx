@@ -19,7 +19,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase/config';
-import { LayoutDashboard, History, LogOut, PlusCircle, ShieldAlert } from 'lucide-react';
+import { LayoutDashboard, History, LogOut, ShieldAlert } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
@@ -52,6 +52,7 @@ export default function ProtectedLayout({
   
   const handleSignOut = async () => {
     if (isDevBypass) {
+        // In dev bypass, just redirect, no actual sign out
         router.push('/');
         return;
     }
@@ -125,7 +126,7 @@ export default function ProtectedLayout({
             {isDevBypass && (
                 <div className="mb-4 flex items-center gap-x-3 rounded-lg border border-yellow-500/50 bg-yellow-500/10 p-3 text-sm text-yellow-500">
                     <ShieldAlert className="h-5 w-5 flex-shrink-0" />
-                    <p className="font-medium">DEV MODE: Firebase Auth bypass enabled.</p>
+                    <p className="font-medium">DEV MODE: Firebase Auth bypass enabled. Data will not persist after refresh.</p>
                 </div>
             )}
             {children}

@@ -8,8 +8,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle, XCircle } from 'lucide-react';
-import { format, formatDistanceToNow } from 'date-fns';
+import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 export default function HistoryPage() {
   const { user } = useAuth();
@@ -38,7 +46,7 @@ export default function HistoryPage() {
         <h1 className="text-3xl font-bold font-headline mb-8">Session History</h1>
         <div className="space-y-4">
           {[...Array(3)].map((_, i) => (
-            <Skeleton key={i} className="h-20 w-full" />
+            <Skeleton key={i} className="h-24 w-full" />
           ))}
         </div>
       </div>
@@ -49,6 +57,69 @@ export default function HistoryPage() {
       ...assignment,
       sessions: sessions.filter(s => s.assignmentId === assignment.id)
   })).filter(a => a.sessions.length > 0);
+
+  const getStatusBadgeVariant = (status: StudySession['state']) => {
+    switch (status) {
+      case 'Completed': return 'default';
+      case 'Abandoned': return 'destructive';
+      default: return 'secondary';
+    }
+  };
+
+  const SessionDetailDialog = ({ session }: { session: StudySession }) => (
+    <DialogContent>
+      <DialogHeader>
+        <DialogTitle>Sprint Details</DialogTitle>
+        <DialogDescription>
+          A read-only view of your study sprint for "{session.targetObject}".
+        </DialogDescription>
+      </DialogHeader>
+      <div className="space-y-4 text-sm pt-4">
+        <div className="grid grid-cols-3 gap-2">
+          <p className="text-muted-foreground col-span-1">Duration</p>
+          <p className="col-span-2">{session.durationMinutes} minutes</p>
+        </div>
+         <div className="grid grid-cols-3 gap-2">
+          <p className="text-muted-foreground col-span-1">Next Action</p>
+          <p className="col-span-2">{session.nextAction}</p>
+        </div>
+         <div className="grid grid-cols-3 gap-2">
+          <p className="text-muted-foreground col-span-1">Deliverable</p>
+          <p className="col-span-2">{session.sprintDeliverable}</p>
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          <p className="text-muted-foreground col-span-1">Status</p>
+          <p className="col-span-2">
+            <Badge variant={getStatusBadgeVariant(session.state)}>{session.state}</Badge>
+          </p>
+        </div>
+        {session.startTime && (
+           <div className="grid grid-cols-3 gap-2">
+            <p className="text-muted-foreground col-span-1">Started</p>
+            <p className="col-span-2">{format(session.startTime.toDate(), 'PPpp')}</p>
+          </div>
+        )}
+        {session.endTime && (
+          <div className="grid grid-cols-3 gap-2">
+            <p className="text-muted-foreground col-span-1">Ended</p>
+            <p className="col-span-2">{format(session.endTime.toDate(), 'PPpp')}</p>
+          </div>
+        )}
+        {session.outcome && (
+          <div className="grid grid-cols-3 gap-2">
+            <p className="text-muted-foreground col-span-1">Outcome</p>
+            <p className="col-span-2">{session.outcome}</p>
+          </div>
+        )}
+        {session.optionalBlockerNote && (
+          <div className="grid grid-cols-3 gap-2">
+            <p className="text-muted-foreground col-span-1">Blocker Note</p>
+            <p className="col-span-2 text-destructive/80">{session.optionalBlockerNote}</p>
+          </div>
+        )}
+      </div>
+    </DialogContent>
+  );
 
   return (
     <div className="container mx-auto">
@@ -71,23 +142,28 @@ export default function HistoryPage() {
                     <AccordionContent className="p-6 pt-0">
                         <div className="space-y-4">
                             {assignment.sessions.map(session => (
-                                <div key={session.id} className="border p-4 rounded-lg flex items-center justify-between">
-                                    <div className='flex items-center gap-4'>
-                                        <div>
-                                            {session.state === 'Completed' ? <CheckCircle className="text-green-500" /> : <XCircle className="text-red-500" />}
+                                <Dialog key={session.id}>
+                                  <DialogTrigger asChild>
+                                    <div className="border p-4 rounded-lg flex items-center justify-between cursor-pointer hover:bg-accent">
+                                        <div className='flex items-center gap-4'>
+                                            <div>
+                                                {session.state === 'Completed' ? <CheckCircle className="text-green-500" /> : <XCircle className="text-red-500" />}
+                                            </div>
+                                            <div>
+                                                <p className='font-semibold'>{session.targetObject}</p>
+                                                <p className='text-sm text-muted-foreground'>
+                                                    {format(session.createdAt.toDate(), 'PPP')} • {session.durationMinutes} min sprint
+                                                </p>
+                                                 {session.optionalBlockerNote && (
+                                                    <p className="text-xs text-destructive/80 mt-1 truncate">Blocker: {session.optionalBlockerNote}</p>
+                                                 )}
+                                            </div>
                                         </div>
-                                        <div>
-                                            <p className='font-semibold'>{session.targetObject}</p>
-                                            <p className='text-sm text-muted-foreground'>
-                                                {format(session.createdAt.toDate(), 'PPP')} • {session.durationMinutes} min sprint
-                                            </p>
-                                             {session.optionalBlockerNote && (
-                                                <p className="text-xs text-destructive/80 mt-1">Blocker: {session.optionalBlockerNote}</p>
-                                             )}
-                                        </div>
+                                        <Badge variant={getStatusBadgeVariant(session.state)}>{session.state}</Badge>
                                     </div>
-                                    <Badge variant={session.state === 'Completed' ? 'default' : 'destructive'}>{session.state}</Badge>
-                                </div>
+                                  </DialogTrigger>
+                                  <SessionDetailDialog session={session} />
+                                </Dialog>
                             ))}
                         </div>
                     </AccordionContent>
@@ -98,3 +174,4 @@ export default function HistoryPage() {
     </div>
   );
 }
+
