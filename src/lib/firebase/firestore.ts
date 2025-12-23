@@ -80,6 +80,18 @@ let mockSessions: StudySession[] = [
     }
 ];
 
+// Helper to restore Timestamps from serialized data
+const restoreTimestamps = (data: any) => {
+    if (!data) return data;
+    const restored = { ...data };
+    for (const key in restored) {
+        if (restored[key] && typeof restored[key] === 'object' && 'seconds' in restored[key] && 'nanoseconds' in restored[key]) {
+            restored[key] = new Timestamp(restored[key].seconds, restored[key].nanoseconds);
+        }
+    }
+    return restored;
+}
+
 
 // --- AssignmentGoal Functions ---
 export const addAssignment = async (userId: string, title: string, optionalDeadline?: Date): Promise<string> => {
@@ -106,8 +118,13 @@ export const addAssignment = async (userId: string, title: string, optionalDeadl
 
 export const getAssignmentsForUser = async (userId: string): Promise<AssignmentGoal[]> => {
   if (isDevBypass) {
-    const userAssignments = mockAssignments.filter(a => a.userId === userId);
-    return Promise.resolve(JSON.parse(JSON.stringify(userAssignments.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis()))));
+    const userAssignments = mockAssignments
+      .filter(a => a.userId === userId)
+      .sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
+    
+    // Deep clone and restore timestamps to avoid mutation and type errors
+    const clonedAssignments = JSON.parse(JSON.stringify(userAssignments));
+    return Promise.resolve(clonedAssignments.map(restoreTimestamps));
   }
   const q = query(collection(db, 'assignmentGoals'), where('userId', '==', userId), orderBy('createdAt', 'desc'));
   const querySnapshot = await getDocs(q);
@@ -117,7 +134,9 @@ export const getAssignmentsForUser = async (userId: string): Promise<AssignmentG
 export const getAssignment = async (assignmentId: string): Promise<AssignmentGoal | null> => {
   if (isDevBypass) {
     const assignment = mockAssignments.find(a => a.id === assignmentId) || null;
-    return Promise.resolve(JSON.parse(JSON.stringify(assignment)));
+    if (!assignment) return Promise.resolve(null);
+    const clonedAssignment = JSON.parse(JSON.stringify(assignment));
+    return Promise.resolve(restoreTimestamps(clonedAssignment));
   }
   const docRef = doc(db, 'assignmentGoals', assignmentId);
   const docSnap = await getDoc(docRef);
@@ -166,7 +185,10 @@ export const updateStudySession = async (sessionId: string, data: Partial<StudyS
 export const getStudySession = async (sessionId: string): Promise<StudySession | null> => {
   if (isDevBypass) {
     const session = mockSessions.find(s => s.id === sessionId) || null;
-    return Promise.resolve(session ? JSON.parse(JSON.stringify(session)) : null);
+    if (!session) return Promise.resolve(null);
+    // Deep clone and restore timestamps
+    const clonedSession = JSON.parse(JSON.stringify(session));
+    return Promise.resolve(restoreTimestamps(clonedSession));
   }
   const docRef = doc(db, 'studySessions', sessionId);
   const docSnap = await getDoc(docRef);
@@ -175,8 +197,12 @@ export const getStudySession = async (sessionId: string): Promise<StudySession |
 
 export const getSessionsForAssignment = async (assignmentId: string): Promise<StudySession[]> => {
   if (isDevBypass) {
-    const sessions = mockSessions.filter(s => s.assignmentId === assignmentId);
-    return Promise.resolve(JSON.parse(JSON.stringify(sessions.sort((a,b) => b.createdAt.toMillis() - a.createdAt.toMillis()))));
+    const sessions = mockSessions
+        .filter(s => s.assignmentId === assignmentId)
+        .sort((a,b) => b.createdAt.toMillis() - a.createdAt.toMillis());
+
+    const clonedSessions = JSON.parse(JSON.stringify(sessions));
+    return Promise.resolve(clonedSessions.map(restoreTimestamps));
   }
   const q = query(collection(db, 'studySessions'), where('assignmentId', '==', assignmentId), orderBy('createdAt', 'desc'));
   const querySnapshot = await getDocs(q);
@@ -185,8 +211,12 @@ export const getSessionsForAssignment = async (assignmentId: string): Promise<St
 
 export const getAllSessionsForUser = async (userId: string): Promise<StudySession[]> => {
     if (isDevBypass) {
-        const sessions = mockSessions.filter(s => s.userId === userId);
-        return Promise.resolve(JSON.parse(JSON.stringify(sessions.sort((a,b) => b.createdAt.toMillis() - a.createdAt.toMillis()))));
+        const sessions = mockSessions
+            .filter(s => s.userId === userId)
+            .sort((a,b) => b.createdAt.toMillis() - a.createdAt.toMillis());
+
+        const clonedSessions = JSON.parse(JSON.stringify(sessions));
+        return Promise.resolve(clonedSessions.map(restoreTimestamps));
     }
     const q = query(collection(db, 'studySessions'), where('userId', '==', userId), orderBy('createdAt', 'desc'));
     const querySnapshot = await getDocs(q);
@@ -195,13 +225,14 @@ export const getAllSessionsForUser = async (userId: string): Promise<StudySessio
 
 export const deleteStudySession = async (sessionId: string): Promise<void> => {
     if (isDevBypass) {
-        const session = await getStudySession(sessionId);
-        if (session && session.state === 'Pending') {
-            mockSessions = mockSessions.filter(s => s.id !== sessionId);
-            return Promise.resolve();
-        }
-        if (session) {
-             return Promise.reject(new Error("Only pending sessions can be deleted."));
+        const sessionIndex = mockSessions.findIndex(s => s.id === sessionId);
+        if (sessionIndex > -1) {
+            if (mockSessions[sessionIndex].state === 'Pending') {
+                mockSessions.splice(sessionIndex, 1);
+                return Promise.resolve();
+            } else {
+                 return Promise.reject(new Error("Only pending sessions can be deleted."));
+            }
         }
         return Promise.reject(new Error("Session not found."));
     }
@@ -220,11 +251,12 @@ export const updateSessionState = async (sessionId: string, state: StudySession[
     if (isDevBypass) {
         const sessionIndex = mockSessions.findIndex(s => s.id === sessionId);
         if (sessionIndex !== -1) {
-            const updatedData = { ...data };
-            if (data.startTime && !(data.startTime instanceof Timestamp)) {
+            const updatedData: Partial<StudySession> = { ...data };
+            // Ensure server-like timestamps are converted to actual Timestamp objects
+            if (data.startTime) {
                 updatedData.startTime = Timestamp.now();
             }
-            if (data.endTime && !(data.endTime instanceof Timestamp)) {
+            if (data.endTime) {
                 updatedData.endTime = Timestamp.now();
             }
             mockSessions[sessionIndex] = { ...mockSessions[sessionIndex], ...updatedData, state };
