@@ -39,7 +39,7 @@ import {
 } from "@/components/ui/dialog";
 
 
-export default function AssignmentDetailPage({ params: { id: assignmentId } }: { params: { id: string } }) {
+export default function AssignmentDetailPage({ params }: { params: { id: string } }) {
   const { user } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
@@ -50,11 +50,11 @@ export default function AssignmentDetailPage({ params: { id: assignmentId } }: {
   const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchAssignmentData = useCallback(() => {
-    if (user && assignmentId) {
+    if (user && params.id) {
       setLoading(true);
       Promise.all([
-        getAssignment(assignmentId),
-        getSessionsForAssignment(assignmentId),
+        getAssignment(params.id),
+        getSessionsForAssignment(params.id),
       ]).then(([assignmentData, sessionsData]) => {
         if (assignmentData && assignmentData.userId === user.uid) {
             setAssignment(assignmentData);
@@ -70,7 +70,7 @@ export default function AssignmentDetailPage({ params: { id: assignmentId } }: {
         toast({ variant: 'destructive', title: 'Error', description: 'Failed to load assignment data.' });
       }).finally(() => setLoading(false));
     }
-  }, [user, assignmentId, toast, router]);
+  }, [user, params.id, toast, router]);
 
   useEffect(() => {
     fetchAssignmentData();

@@ -13,7 +13,7 @@ import { Loader2, CheckCircle, XCircle, Target, Rocket } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Textarea } from '@/components/ui/textarea';
 
-export default function ActiveSprintPage({ params: { id: sessionId } }: { params: { id: string } }) {
+export default function ActiveSprintPage({ params }: { params: { id: string } }) {
   const { user } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
@@ -23,9 +23,9 @@ export default function ActiveSprintPage({ params: { id: sessionId } }: { params
   const [blockerNote, setBlockerNote] = useState('');
 
   useEffect(() => {
-    if (!user || !sessionId) return;
+    if (!user || !params.id) return;
     
-    getStudySession(sessionId)
+    getStudySession(params.id)
       .then(sessionData => {
         if (sessionData && sessionData.userId === user.uid && sessionData.state === 'Active' && sessionData.startTime) {
           setSession(sessionData);
@@ -44,7 +44,7 @@ export default function ActiveSprintPage({ params: { id: sessionId } }: { params
       })
       .finally(() => setLoading(false));
     
-  }, [user, sessionId, router, toast]);
+  }, [user, params.id, router, toast]);
 
   useEffect(() => {
     if (timeLeft === null || timeLeft <= 0) return;
@@ -57,7 +57,7 @@ export default function ActiveSprintPage({ params: { id: sessionId } }: { params
   const handleEndSprint = useCallback(async (outcome: 'Completed' | 'Abandoned', optionalBlockerNote?: string) => {
     if (!session) return;
     try {
-        await updateSessionState(sessionId, outcome, {
+        await updateSessionState(params.id, outcome, {
             outcome,
             endTime: serverTimestamp(),
             ...(optionalBlockerNote && { optionalBlockerNote }),
@@ -68,7 +68,7 @@ export default function ActiveSprintPage({ params: { id: sessionId } }: { params
     } catch(error) {
         toast({ variant: 'destructive', title: 'Error', description: 'Could not end sprint.' });
     }
-  }, [session, sessionId, router, toast]);
+  }, [session, params.id, router, toast]);
 
   useEffect(() => {
     if (timeLeft !== null && timeLeft <= 0 && session) {

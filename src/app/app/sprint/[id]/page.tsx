@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { serverTimestamp } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 
-export default function SprintConfirmationPage({ params: { id: sessionId } }: { params: { id: string } }) {
+export default function SprintConfirmationPage({ params }: { params: { id: string } }) {
   const { user } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
@@ -21,8 +21,8 @@ export default function SprintConfirmationPage({ params: { id: sessionId } }: { 
   const [isStarting, setIsStarting] = useState(false);
 
   useEffect(() => {
-    if (user && sessionId) {
-      getStudySession(sessionId)
+    if (user && params.id) {
+      getStudySession(params.id)
         .then(sessionData => {
           if (sessionData && sessionData.userId === user.uid && sessionData.state === 'Pending') {
             setSession(sessionData);
@@ -35,15 +35,15 @@ export default function SprintConfirmationPage({ params: { id: sessionId } }: { 
         .catch(console.error)
         .finally(() => setLoading(false));
     }
-  }, [user, sessionId, router, toast]);
+  }, [user, params.id, router, toast]);
 
   const handleStartSprint = async () => {
     if (!session) return;
     setIsStarting(true);
     try {
-        await updateSessionState(sessionId, 'Active', { startTime: serverTimestamp() });
+        await updateSessionState(session.id, 'Active', { startTime: serverTimestamp() });
         toast({ title: 'Sprint Started!', description: 'Time to focus.' });
-        router.push(`/app/sprint/${sessionId}/active`);
+        router.push(`/app/sprint/${session.id}/active`);
     } catch(error) {
         toast({ variant: 'destructive', title: 'Error', description: 'Could not start sprint.' });
         setIsStarting(false);
