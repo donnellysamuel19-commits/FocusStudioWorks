@@ -84,10 +84,8 @@ export default function NewOrEditSprintPage({ params }: { params: { id: string, 
         await updateStudySession(sessionId, sessionData);
         toast({ title: 'Sprint Updated', description: 'Your changes have been saved.' });
       } else {
-        const newSessionId = await addStudySession(user.uid, assignmentId, sessionData);
+        await addStudySession(user.uid, assignmentId, sessionData);
         toast({ title: 'Sprint Defined', description: 'Your new sprint is ready to start.' });
-        router.push(`/app/sprint/${newSessionId}`);
-        return;
       }
       router.push(`/app/assignments/${assignmentId}`);
       router.refresh();
@@ -196,5 +194,3 @@ export default function NewOrEditSprintPage({ params }: { params: { id: string, 
     </div>
   );
 }
-
-    

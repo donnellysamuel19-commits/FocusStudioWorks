@@ -12,10 +12,8 @@ import { serverTimestamp } from 'firebase/firestore';
 import { Loader2, CheckCircle, XCircle, Target, Rocket } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { AlertDialogTrigger } from '@radix-ui/react-alert-dialog';
 
-export default function ActiveSprintPage({ params }: { params: { id: string } }) {
-  const { id: sessionId } = params;
+export default function ActiveSprintPage({ params: { id: sessionId } }: { params: { id: string } }) {
   const { user } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
@@ -146,5 +144,3 @@ export default function ActiveSprintPage({ params }: { params: { id: string } })
     </div>
   );
 }
-
-    

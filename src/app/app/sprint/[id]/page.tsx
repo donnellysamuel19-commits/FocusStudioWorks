@@ -12,8 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { serverTimestamp } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 
-export default function SprintConfirmationPage({ params }: { params: { id: string } }) {
-  const { id: sessionId } = params;
+export default function SprintConfirmationPage({ params: { id: sessionId } }: { params: { id: string } }) {
   const { user } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
@@ -101,5 +100,3 @@ export default function SprintConfirmationPage({ params }: { params: { id: strin
     </div>
   );
 }
-
-    

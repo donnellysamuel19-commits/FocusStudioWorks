@@ -39,8 +39,7 @@ import {
 } from "@/components/ui/dialog";
 
 
-export default function AssignmentDetailPage({ params }: { params: { id: string } }) {
-  const { id: assignmentId } = params;
+export default function AssignmentDetailPage({ params: { id: assignmentId } }: { params: { id: string } }) {
   const { user } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
@@ -270,28 +269,10 @@ export default function AssignmentDetailPage({ params }: { params: { id: string 
                                       <Edit className="mr-2 h-4 w-4" />
                                       <span>Edit</span>
                                     </DropdownMenuItem>
-                                    <AlertDialog>
-                                      <AlertDialogTrigger asChild>
-                                          <DropdownMenuItem className="text-red-600" onSelect={() => setSessionToDelete(session.id)}>
-                                              <Trash2 className="mr-2 h-4 w-4" />
-                                              <span>Delete</span>
-                                          </DropdownMenuItem>
-                                      </AlertDialogTrigger>
-                                      <AlertDialogContent>
-                                          <AlertDialogHeader>
-                                              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                              <AlertDialogDescription>
-                                                  This will permanently delete this pending sprint. This action cannot be undone.
-                                              </AlertDialogDescription>
-                                          </AlertDialogHeader>
-                                          <AlertDialogFooter>
-                                              <AlertDialogCancel disabled={isDeleting} onClick={() => setSessionToDelete(null)}>Cancel</AlertDialogCancel>
-                                              <AlertDialogAction onClick={handleDeleteSession} disabled={isDeleting}>
-                                                  {isDeleting ? 'Deleting...' : 'Delete'}
-                                              </AlertDialogAction>
-                                          </AlertDialogFooter>
-                                      </AlertDialogContent>
-                                    </AlertDialog>
+                                    <DropdownMenuItem className="text-red-600" onSelect={() => setSessionToDelete(session.id)}>
+                                      <Trash2 className="mr-2 h-4 w-4" />
+                                      <span>Delete</span>
+                                    </DropdownMenuItem>
                                   </>
                                 )}
                             </DropdownMenuContent>
@@ -305,8 +286,24 @@ export default function AssignmentDetailPage({ params }: { params: { id: string 
           )}
         </CardContent>
       </Card>
+      
+      <AlertDialog open={!!sessionToDelete} onOpenChange={(open) => !open && setSessionToDelete(null)}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                    This will permanently delete this pending sprint. This action cannot be undone.
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel disabled={isDeleting} onClick={() => setSessionToDelete(null)}>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteSession} disabled={isDeleting}>
+                    {isDeleting ? 'Deleting...' : 'Delete'}
+                </AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </div>
   );
 }
-
-    
