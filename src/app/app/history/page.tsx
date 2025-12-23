@@ -88,10 +88,10 @@ export default function HistoryPage() {
           <p className="col-span-2">{session.sprintDeliverable}</p>
         </div>
         <div className="grid grid-cols-3 gap-2">
-          <p className="text-muted-foreground col-span-1">Status</p>
-          <p className="col-span-2">
+          <div className="text-muted-foreground col-span-1">Status</div>
+          <div className="col-span-2">
             <Badge variant={getStatusBadgeVariant(session.state)}>{session.state}</Badge>
-          </p>
+          </div>
         </div>
         {session.startTime && (
            <div className="grid grid-cols-3 gap-2">
@@ -174,4 +174,3 @@ export default function HistoryPage() {
     </div>
   );
 }
-
