@@ -7,10 +7,11 @@ import { getStudySession, updateSessionState } from '@/lib/firebase/firestore';
 import type { StudySession } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Check, ArrowRight, Clock, Target, Rocket } from 'lucide-react';
+import { Loader2, Check, ArrowLeft, Clock, Target, Rocket, Edit } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { serverTimestamp } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
+import Link from 'next/link';
 
 export default function SprintConfirmationPage({ params }: { params: { id: string } }) {
   const { user } = useAuth();
@@ -89,12 +90,22 @@ export default function SprintConfirmationPage({ params }: { params: { id: strin
                 <p className="text-muted-foreground pl-7">{session.sprintDeliverable}</p>
             </div>
         </CardContent>
-        <CardFooter className="flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => router.back()} disabled={isStarting}>Cancel</Button>
-            <Button onClick={handleStartSprint} disabled={isStarting}>
-                {isStarting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                <Check className="mr-2 h-4 w-4" /> Start Sprint
+        <CardFooter className="flex justify-between">
+             <Button variant="ghost" onClick={() => router.push(`/app/assignments/${session.assignmentId}`)} disabled={isStarting}>
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Assignment
             </Button>
+            <div className="flex gap-2">
+                <Button variant="outline" asChild disabled={isStarting}>
+                    <Link href={`/app/sprint/${session.id}/edit`}>
+                        <Edit className="mr-2 h-4 w-4" /> Edit
+                    </Link>
+                </Button>
+                <Button onClick={handleStartSprint} disabled={isStarting}>
+                    {isStarting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    <Check className="mr-2 h-4 w-4" /> Start Sprint
+                </Button>
+            </div>
         </CardFooter>
       </Card>
     </div>

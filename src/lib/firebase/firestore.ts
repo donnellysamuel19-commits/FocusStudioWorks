@@ -1,4 +1,3 @@
-
 import {
   collection,
   addDoc,
@@ -11,13 +10,14 @@ import {
   updateDoc,
   orderBy,
   Timestamp,
+  deleteDoc,
 } from 'firebase/firestore';
 import { db } from './config';
 import type { AssignmentGoal, StudySession } from '@/types';
 
-const isDevBypass = process.env.DEV_AUTH_BYPASS === 'true';
+const isDevBypass = process.env.NEXT_PUBLIC_DEV_AUTH_BYPASS === 'true';
 
-const mockAssignments: AssignmentGoal[] = [
+let mockAssignments: AssignmentGoal[] = [
     {
         id: 'dev-assignment-1',
         userId: 'dev-user',
@@ -33,7 +33,7 @@ const mockAssignments: AssignmentGoal[] = [
     }
 ];
 
-const mockSessions: StudySession[] = [
+let mockSessions: StudySession[] = [
     {
         id: 'dev-session-1',
         userId: 'dev-user',
@@ -62,6 +62,17 @@ const mockSessions: StudySession[] = [
         endTime: Timestamp.now(),
         outcome: 'Abandoned',
         optionalBlockerNote: 'Got distracted'
+    },
+    {
+        id: 'dev-session-3',
+        userId: 'dev-user',
+        assignmentId: 'dev-assignment-2',
+        targetObject: 'Brainstorm Thesis',
+        nextAction: 'Write 3 potential thesis statements',
+        sprintDeliverable: 'List of 3 statements',
+        durationMinutes: 10,
+        state: 'Pending',
+        createdAt: Timestamp.now(),
     }
 ];
 
@@ -69,9 +80,15 @@ const mockSessions: StudySession[] = [
 // AssignmentGoal Functions
 export const addAssignment = async (userId: string, title: string, optionalDeadline?: Date): Promise<string> => {
   if (isDevBypass) {
-    console.log('DEV_AUTH_BYPASS: Skipped addAssignment, returning mock ID.');
     const newId = `dev-assignment-${Date.now()}`;
-    mockAssignments.push({ id: newId, userId, title, optionalDeadline: optionalDeadline ? Timestamp.fromDate(optionalDeadline) : undefined, createdAt: Timestamp.now() });
+    const newAssignment: AssignmentGoal = { 
+        id: newId, 
+        userId, 
+        title, 
+        optionalDeadline: optionalDeadline ? Timestamp.fromDate(optionalDeadline) : undefined, 
+        createdAt: Timestamp.now() 
+    };
+    mockAssignments.push(newAssignment);
     return Promise.resolve(newId);
   }
   const docRef = await addDoc(collection(db, 'assignmentGoals'), {
@@ -85,8 +102,7 @@ export const addAssignment = async (userId: string, title: string, optionalDeadl
 
 export const getAssignmentsForUser = async (userId: string): Promise<AssignmentGoal[]> => {
   if (isDevBypass) {
-    console.log('DEV_AUTH_BYPASS: Returning mock assignments.');
-    return Promise.resolve(mockAssignments.filter(a => a.userId === userId));
+    return Promise.resolve(mockAssignments.filter(a => a.userId === userId).sort((a,b) => b.createdAt.toMillis() - a.createdAt.toMillis()));
   }
   const q = query(collection(db, 'assignmentGoals'), where('userId', '==', userId), orderBy('createdAt', 'desc'));
   const querySnapshot = await getDocs(q);
@@ -95,7 +111,6 @@ export const getAssignmentsForUser = async (userId: string): Promise<AssignmentG
 
 export const getAssignment = async (assignmentId: string): Promise<AssignmentGoal | null> => {
   if (isDevBypass) {
-    console.log('DEV_AUTH_BYPASS: Returning mock assignment.');
     const assignment = mockAssignments.find(a => a.id === assignmentId) || null;
     return Promise.resolve(assignment);
   }
@@ -108,20 +123,20 @@ export const getAssignment = async (assignmentId: string): Promise<AssignmentGoa
 };
 
 // StudySession Functions
-type StudySessionInput = Omit<StudySession, 'id' | 'userId' | 'state' | 'createdAt'>;
+type StudySessionInput = Omit<StudySession, 'id' | 'userId' | 'assignmentId' | 'state' | 'createdAt'>;
 
 export const addStudySession = async (userId: string, assignmentId: string, sessionData: StudySessionInput): Promise<string> => {
   if (isDevBypass) {
-    console.log('DEV_AUTH_BYPASS: Skipped addStudySession, returning mock ID.');
     const newId = `dev-session-${Date.now()}`;
-     mockSessions.push({ 
+     const newSession: StudySession = { 
         ...sessionData,
         id: newId, 
         userId, 
         assignmentId, 
         state: 'Pending', 
         createdAt: Timestamp.now() 
-    });
+    };
+    mockSessions.push(newSession);
     return Promise.resolve(newId);
   }
   const docRef = await addDoc(collection(db, 'studySessions'), {
@@ -134,9 +149,29 @@ export const addStudySession = async (userId: string, assignmentId: string, sess
   return docRef.id;
 };
 
+export const updateStudySession = async (sessionId: string, data: Partial<StudySessionInput>): Promise<void> => {
+    if (isDevBypass) {
+        const sessionIndex = mockSessions.findIndex(s => s.id === sessionId);
+        if (sessionIndex !== -1) {
+            mockSessions[sessionIndex] = { ...mockSessions[sessionIndex], ...data };
+        }
+        return Promise.resolve();
+    }
+    const docRef = doc(db, 'studySessions', sessionId);
+    await updateDoc(docRef, data);
+};
+
+export const deleteStudySession = async (sessionId: string): Promise<void> => {
+    if (isDevBypass) {
+        mockSessions = mockSessions.filter(s => s.id !== sessionId);
+        return Promise.resolve();
+    }
+    const docRef = doc(db, 'studySessions', sessionId);
+    await deleteDoc(docRef);
+}
+
 export const getStudySession = async (sessionId: string): Promise<StudySession | null> => {
   if (isDevBypass) {
-    console.log('DEV_AUTH_BYPASS: Returning mock session.');
     const session = mockSessions.find(s => s.id === sessionId) || null;
     return Promise.resolve(session);
   }
@@ -150,8 +185,7 @@ export const getStudySession = async (sessionId: string): Promise<StudySession |
 
 export const getSessionsForAssignment = async (assignmentId: string): Promise<StudySession[]> => {
   if (isDevBypass) {
-    console.log('DEV_AUTH_BYPASS: Returning mock sessions for assignment.');
-    return Promise.resolve(mockSessions.filter(s => s.assignmentId === assignmentId));
+    return Promise.resolve(mockSessions.filter(s => s.assignmentId === assignmentId).sort((a,b) => b.createdAt.toMillis() - a.createdAt.toMillis()));
   }
   const q = query(collection(db, 'studySessions'), where('assignmentId', '==', assignmentId), orderBy('createdAt', 'desc'));
   const querySnapshot = await getDocs(q);
@@ -160,8 +194,7 @@ export const getSessionsForAssignment = async (assignmentId: string): Promise<St
 
 export const getAllSessionsForUser = async (userId: string): Promise<StudySession[]> => {
     if (isDevBypass) {
-        console.log('DEV_AUTH_BYPASS: Returning all mock sessions for user.');
-        return Promise.resolve(mockSessions.filter(s => s.userId === userId));
+        return Promise.resolve(mockSessions.filter(s => s.userId === userId).sort((a,b) => b.createdAt.toMillis() - a.createdAt.toMillis()));
     }
     const q = query(collection(db, 'studySessions'), where('userId', '==', userId), orderBy('createdAt', 'desc'));
     const querySnapshot = await getDocs(q);
@@ -170,10 +203,16 @@ export const getAllSessionsForUser = async (userId: string): Promise<StudySessio
 
 export const updateSessionState = async (sessionId: string, state: StudySession['state'], data: Partial<StudySession> = {}): Promise<void> => {
     if (isDevBypass) {
-        console.log('DEV_AUTH_BYPASS: Mock updating session state.');
         const sessionIndex = mockSessions.findIndex(s => s.id === sessionId);
         if (sessionIndex !== -1) {
-            mockSessions[sessionIndex] = { ...mockSessions[sessionIndex], ...data, state };
+            const updatedSession = { ...mockSessions[sessionIndex], ...data, state };
+            if (state === 'Active' && !updatedSession.startTime) {
+                updatedSession.startTime = Timestamp.now();
+            }
+             if ((state === 'Completed' || state === 'Abandoned') && !updatedSession.endTime) {
+                updatedSession.endTime = Timestamp.now();
+            }
+            mockSessions[sessionIndex] = updatedSession;
         }
         return Promise.resolve();
     }

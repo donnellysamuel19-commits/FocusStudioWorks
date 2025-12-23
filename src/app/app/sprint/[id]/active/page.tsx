@@ -19,7 +19,7 @@ export default function ActiveSprintPage({ params }: { params: { id: string } })
   const { toast } = useToast();
   const [session, setSession] = useState<StudySession | null>(null);
   const [loading, setLoading] = useState(true);
-  const [timeLeft, setTimeLeft] = useState(0);
+  const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [blockerNote, setBlockerNote] = useState('');
   const sessionId = params.id;
 
@@ -29,10 +29,12 @@ export default function ActiveSprintPage({ params }: { params: { id: string } })
         .then(sessionData => {
           if (sessionData && sessionData.userId === user.uid && sessionData.state === 'Active' && sessionData.startTime) {
             setSession(sessionData);
-            const elapsed = (Date.now() - sessionData.startTime.toDate().getTime()) / 1000;
-            const remaining = sessionData.durationMinutes * 60 - elapsed;
-            setTimeLeft(Math.max(0, remaining));
+            const serverStartTime = sessionData.startTime.toDate().getTime();
+            const elapsedSeconds = Math.floor((Date.now() - serverStartTime) / 1000);
+            const initialRemaining = sessionData.durationMinutes * 60 - elapsedSeconds;
+            setTimeLeft(Math.max(0, initialRemaining));
           } else {
+            // If session is not active or invalid, redirect.
             router.replace('/app/dashboard');
           }
         })
@@ -41,14 +43,6 @@ export default function ActiveSprintPage({ params }: { params: { id: string } })
     }
   }, [user, sessionId, router]);
 
-  useEffect(() => {
-    if (timeLeft <= 0 || !session) return;
-    const timer = setInterval(() => {
-      setTimeLeft(prev => prev - 1);
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [timeLeft, session]);
-  
   const handleEndSprint = useCallback(async (outcome: 'Completed' | 'Abandoned', optionalBlockerNote?: string) => {
     if (!session) return;
     try {
@@ -65,12 +59,21 @@ export default function ActiveSprintPage({ params }: { params: { id: string } })
   }, [session, sessionId, router, toast]);
 
   useEffect(() => {
-    if (timeLeft <= 0 && session) {
-        handleEndSprint('Completed');
+    if (timeLeft === null || session === null) return;
+    
+    if (timeLeft <= 0) {
+      handleEndSprint('Completed');
+      return;
     }
+
+    const timer = setInterval(() => {
+      setTimeLeft(prev => (prev !== null ? Math.max(0, prev - 1) : 0));
+    }, 1000);
+
+    return () => clearInterval(timer);
   }, [timeLeft, session, handleEndSprint]);
 
-  if (loading || !session) {
+  if (loading || session === null || timeLeft === null) {
     return (
       <div className="flex h-full w-full items-center justify-center">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />

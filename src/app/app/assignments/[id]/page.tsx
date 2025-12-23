@@ -2,24 +2,46 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth';
-import { getAssignment, getSessionsForAssignment } from '@/lib/firebase/firestore';
+import { getAssignment, getSessionsForAssignment, deleteStudySession } from '@/lib/firebase/firestore';
 import type { AssignmentGoal, StudySession } from '@/types';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Clock, PlusCircle, CheckCircle, XCircle, PlayCircle, Hourglass } from 'lucide-react';
+import { Clock, PlusCircle, CheckCircle, XCircle, PlayCircle, Hourglass, Edit, Trash2 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { useToast } from '@/hooks/use-toast';
 
 export default function AssignmentDetailPage({ params }: { params: { id: string } }) {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [assignment, setAssignment] = useState<AssignmentGoal | null>(null);
   const [sessions, setSessions] = useState<StudySession[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const fetchSessions = (assignmentId: string) => {
+    getSessionsForAssignment(assignmentId)
+      .then(sessionsData => {
+          setSessions(sessionsData);
+      })
+      .catch(console.error);
+  }
+
   useEffect(() => {
     if (user && params.id) {
+      setLoading(true);
       Promise.all([
         getAssignment(params.id),
         getSessionsForAssignment(params.id),
@@ -33,6 +55,16 @@ export default function AssignmentDetailPage({ params }: { params: { id: string 
       }).catch(console.error).finally(() => setLoading(false));
     }
   }, [user, params.id]);
+  
+  const handleDeleteSession = async (sessionId: string) => {
+    try {
+      await deleteStudySession(sessionId);
+      setSessions(prev => prev.filter(s => s.id !== sessionId));
+      toast({ title: 'Sprint Deleted', description: 'The pending sprint has been removed.' });
+    } catch (error) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not delete sprint.' });
+    }
+  };
 
   if (loading) {
     return (
@@ -108,7 +140,42 @@ export default function AssignmentDetailPage({ params }: { params: { id: string 
                             </p>
                         </div>
                     </div>
-                  <Badge variant={session.state === 'Completed' ? 'default' : 'secondary'}>{session.state}</Badge>
+                    <div className="flex items-center gap-2">
+                        {session.state === 'Pending' && (
+                            <>
+                             <Button variant="ghost" size="icon" asChild>
+                                <Link href={`/app/sprint/${session.id}/edit`}>
+                                    <Edit className="h-4 w-4" />
+                                </Link>
+                               </Button>
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            This will permanently delete the pending sprint. This action cannot be undone.
+                                        </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => handleDeleteSession(session.id)}>Delete</AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                                <Button asChild size="sm">
+                                    <Link href={`/app/sprint/${session.id}`}>Confirm</Link>
+                                </Button>
+                            </>
+                        )}
+                        {(session.state !== 'Pending') && 
+                            <Badge variant={session.state === 'Completed' ? 'default' : 'secondary'}>{session.state}</Badge>
+                        }
+                    </div>
                 </div>
               ))}
             </div>
