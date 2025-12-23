@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { serverTimestamp, Timestamp } from 'firebase/firestore';
 import { Loader2, CheckCircle, XCircle, Target, Rocket } from 'lucide-react';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Textarea } from '@/components/ui/textarea';
 
 export default function ActiveSprintPage({ params }: { params: Promise<{ id: string }> }) {
@@ -46,7 +46,6 @@ export default function ActiveSprintPage({ params }: { params: Promise<{ id: str
       .then(sessionData => {
         if (sessionData && sessionData.userId === user.uid && sessionData.state === 'Active' && sessionData.startTime) {
           setSession(sessionData);
-          // startTime from mock is a plain object, needs to be converted to Timestamp
           const startTime = new Timestamp(sessionData.startTime.seconds, sessionData.startTime.nanoseconds);
           const elapsedSeconds = (Date.now() - startTime.toDate().getTime()) / 1000;
           const initialRemaining = sessionData.durationMinutes * 60 - elapsedSeconds;
