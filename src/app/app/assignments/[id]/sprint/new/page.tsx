@@ -88,12 +88,13 @@ export default function NewOrEditSprintPage({ params }: PageProps) {
       if (isEditMode && sessionId) {
         await updateStudySession(sessionId, sessionData);
         toast({ title: 'Sprint Updated', description: 'Your changes have been saved.' });
+        router.push(`/app/assignments/${assignmentId}`);
+        router.refresh();
       } else {
-        await addStudySession(user.uid, assignmentId, sessionData);
+        const newSprintId = await addStudySession(user.uid, assignmentId, sessionData);
         toast({ title: 'Sprint Defined', description: 'Your new sprint is ready to start.' });
+        router.push(`/app/sprint/${newSprintId}`);
       }
-      router.push(`/app/assignments/${assignmentId}`);
-      router.refresh();
     } catch (error) {
       console.error(error);
       toast({ variant: 'destructive', title: 'Error', description: `Could not ${isEditMode ? 'update' : 'create'} sprint.` });

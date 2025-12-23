@@ -42,12 +42,16 @@ export default function ActiveSprintPage({ params }: { params: Promise<{ id: str
   useEffect(() => {
     if (!user || !id) return;
     
+    let isMounted = true;
+
     getStudySession(id)
       .then(sessionData => {
+        if (!isMounted) return;
+
         if (sessionData && sessionData.userId === user.uid && sessionData.state === 'Active' && sessionData.startTime) {
           setSession(sessionData);
-          const startTime = new Timestamp(sessionData.startTime.seconds, sessionData.startTime.nanoseconds);
-          const elapsedSeconds = (Date.now() - startTime.toDate().getTime()) / 1000;
+          const startTime = sessionData.startTime.toDate();
+          const elapsedSeconds = (Date.now() - startTime.getTime()) / 1000;
           const initialRemaining = sessionData.durationMinutes * 60 - elapsedSeconds;
           
           if (initialRemaining <= 0) {
@@ -57,7 +61,7 @@ export default function ActiveSprintPage({ params }: { params: Promise<{ id: str
           }
 
         } else {
-          toast({ variant: 'destructive', title: 'Error', description: 'Active sprint not found.' });
+          toast({ variant: 'destructive', title: 'Error', description: 'Active sprint not found or already completed.' });
           router.replace('/app/dashboard');
         }
       })
@@ -66,8 +70,11 @@ export default function ActiveSprintPage({ params }: { params: Promise<{ id: str
         toast({ variant: 'destructive', title: 'Error', description: 'Failed to load the sprint data.' });
         router.replace('/app/dashboard');
       })
-      .finally(() => setLoading(false));
-    
+      .finally(() => {
+        if(isMounted) setLoading(false)
+      });
+      
+    return () => { isMounted = false; };
   }, [user, id, router, toast, handleEndSprint]);
 
   useEffect(() => {

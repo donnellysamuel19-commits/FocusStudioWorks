@@ -81,15 +81,19 @@ let mockSessions: StudySession[] = [
 ];
 
 // Helper to restore Timestamps from serialized data
-const restoreTimestamps = (data: any) => {
+const restoreTimestamps = <T extends { [key: string]: any }>(data: T): T => {
     if (!data) return data;
-    const restored = { ...data };
+    const restored: T = { ...data };
     for (const key in restored) {
         if (restored[key] && typeof restored[key] === 'object' && 'seconds' in restored[key] && 'nanoseconds' in restored[key]) {
-            restored[key] = new Timestamp(restored[key].seconds, restored[key].nanoseconds);
+            restored[key] = new Timestamp((restored[key] as any).seconds, (restored[key] as any).nanoseconds) as any;
         }
     }
     return restored;
+}
+
+const deepClone = <T>(obj: T): T => {
+    return restoreTimestamps(JSON.parse(JSON.stringify(obj)));
 }
 
 
@@ -118,13 +122,11 @@ export const addAssignment = async (userId: string, title: string, optionalDeadl
 
 export const getAssignmentsForUser = async (userId: string): Promise<AssignmentGoal[]> => {
   if (isDevBypass) {
-    const userAssignments = mockAssignments
-      .filter(a => a.userId === userId)
-      .sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
-    
-    // Deep clone and restore timestamps to avoid mutation and type errors
-    const clonedAssignments = JSON.parse(JSON.stringify(userAssignments));
-    return Promise.resolve(clonedAssignments.map(restoreTimestamps));
+    return Promise.resolve(
+        deepClone(mockAssignments)
+            .filter(a => a.userId === userId)
+            .sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis())
+    );
   }
   const q = query(collection(db, 'assignmentGoals'), where('userId', '==', userId), orderBy('createdAt', 'desc'));
   const querySnapshot = await getDocs(q);
@@ -134,9 +136,7 @@ export const getAssignmentsForUser = async (userId: string): Promise<AssignmentG
 export const getAssignment = async (assignmentId: string): Promise<AssignmentGoal | null> => {
   if (isDevBypass) {
     const assignment = mockAssignments.find(a => a.id === assignmentId) || null;
-    if (!assignment) return Promise.resolve(null);
-    const clonedAssignment = JSON.parse(JSON.stringify(assignment));
-    return Promise.resolve(restoreTimestamps(clonedAssignment));
+    return Promise.resolve(assignment ? deepClone(assignment) : null);
   }
   const docRef = doc(db, 'assignmentGoals', assignmentId);
   const docSnap = await getDoc(docRef);
@@ -185,10 +185,7 @@ export const updateStudySession = async (sessionId: string, data: Partial<StudyS
 export const getStudySession = async (sessionId: string): Promise<StudySession | null> => {
   if (isDevBypass) {
     const session = mockSessions.find(s => s.id === sessionId) || null;
-    if (!session) return Promise.resolve(null);
-    // Deep clone and restore timestamps
-    const clonedSession = JSON.parse(JSON.stringify(session));
-    return Promise.resolve(restoreTimestamps(clonedSession));
+    return Promise.resolve(session ? deepClone(session) : null);
   }
   const docRef = doc(db, 'studySessions', sessionId);
   const docSnap = await getDoc(docRef);
@@ -197,12 +194,11 @@ export const getStudySession = async (sessionId: string): Promise<StudySession |
 
 export const getSessionsForAssignment = async (assignmentId: string): Promise<StudySession[]> => {
   if (isDevBypass) {
-    const sessions = mockSessions
-        .filter(s => s.assignmentId === assignmentId)
-        .sort((a,b) => b.createdAt.toMillis() - a.createdAt.toMillis());
-
-    const clonedSessions = JSON.parse(JSON.stringify(sessions));
-    return Promise.resolve(clonedSessions.map(restoreTimestamps));
+    return Promise.resolve(
+        deepClone(mockSessions)
+            .filter(s => s.assignmentId === assignmentId)
+            .sort((a,b) => b.createdAt.toMillis() - a.createdAt.toMillis())
+    );
   }
   const q = query(collection(db, 'studySessions'), where('assignmentId', '==', assignmentId), orderBy('createdAt', 'desc'));
   const querySnapshot = await getDocs(q);
@@ -211,12 +207,11 @@ export const getSessionsForAssignment = async (assignmentId: string): Promise<St
 
 export const getAllSessionsForUser = async (userId: string): Promise<StudySession[]> => {
     if (isDevBypass) {
-        const sessions = mockSessions
-            .filter(s => s.userId === userId)
-            .sort((a,b) => b.createdAt.toMillis() - a.createdAt.toMillis());
-
-        const clonedSessions = JSON.parse(JSON.stringify(sessions));
-        return Promise.resolve(clonedSessions.map(restoreTimestamps));
+        return Promise.resolve(
+            deepClone(mockSessions)
+                .filter(s => s.userId === userId)
+                .sort((a,b) => b.createdAt.toMillis() - a.createdAt.toMillis())
+        );
     }
     const q = query(collection(db, 'studySessions'), where('userId', '==', userId), orderBy('createdAt', 'desc'));
     const querySnapshot = await getDocs(q);
