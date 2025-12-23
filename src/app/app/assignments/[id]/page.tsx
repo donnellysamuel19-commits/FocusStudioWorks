@@ -40,6 +40,7 @@ import {
 
 
 export default function AssignmentDetailPage({ params }: { params: { id: string } }) {
+  const { id } = params;
   const { user } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
@@ -50,11 +51,11 @@ export default function AssignmentDetailPage({ params }: { params: { id: string 
   const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchAssignmentData = useCallback(() => {
-    if (user && params.id) {
+    if (user && id) {
       setLoading(true);
       Promise.all([
-        getAssignment(params.id),
-        getSessionsForAssignment(params.id),
+        getAssignment(id),
+        getSessionsForAssignment(id),
       ]).then(([assignmentData, sessionsData]) => {
         if (assignmentData && assignmentData.userId === user.uid) {
             setAssignment(assignmentData);
@@ -70,7 +71,7 @@ export default function AssignmentDetailPage({ params }: { params: { id: string 
         toast({ variant: 'destructive', title: 'Error', description: 'Failed to load assignment data.' });
       }).finally(() => setLoading(false));
     }
-  }, [user, params.id, toast, router]);
+  }, [user, id, toast, router]);
 
   useEffect(() => {
     fetchAssignmentData();

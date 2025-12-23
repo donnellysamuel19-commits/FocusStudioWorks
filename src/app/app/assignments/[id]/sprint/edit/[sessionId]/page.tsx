@@ -6,5 +6,6 @@
 import NewOrEditSprintPage from '../../new/page';
 
 export default function EditSprintPage({ params }: { params: { id: string, sessionId: string } }) {
-  return <NewOrEditSprintPage params={params} />;
+  const { id, sessionId } = params;
+  return <NewOrEditSprintPage params={{ id, sessionId }} />;
 }

@@ -13,6 +13,7 @@ import { serverTimestamp } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function SprintConfirmationPage({ params }: { params: { id: string } }) {
+  const { id } = params;
   const { user } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
@@ -21,8 +22,8 @@ export default function SprintConfirmationPage({ params }: { params: { id: strin
   const [isStarting, setIsStarting] = useState(false);
 
   useEffect(() => {
-    if (user && params.id) {
-      getStudySession(params.id)
+    if (user && id) {
+      getStudySession(id)
         .then(sessionData => {
           if (sessionData && sessionData.userId === user.uid && sessionData.state === 'Pending') {
             setSession(sessionData);
@@ -35,7 +36,7 @@ export default function SprintConfirmationPage({ params }: { params: { id: strin
         .catch(console.error)
         .finally(() => setLoading(false));
     }
-  }, [user, params.id, router, toast]);
+  }, [user, id, router, toast]);
 
   const handleStartSprint = async () => {
     if (!session) return;

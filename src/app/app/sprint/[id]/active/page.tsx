@@ -14,6 +14,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Textarea } from '@/components/ui/textarea';
 
 export default function ActiveSprintPage({ params }: { params: { id: string } }) {
+  const { id } = params;
   const { user } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
@@ -23,9 +24,9 @@ export default function ActiveSprintPage({ params }: { params: { id: string } })
   const [blockerNote, setBlockerNote] = useState('');
 
   useEffect(() => {
-    if (!user || !params.id) return;
+    if (!user || !id) return;
     
-    getStudySession(params.id)
+    getStudySession(id)
       .then(sessionData => {
         if (sessionData && sessionData.userId === user.uid && sessionData.state === 'Active' && sessionData.startTime) {
           setSession(sessionData);
@@ -44,7 +45,7 @@ export default function ActiveSprintPage({ params }: { params: { id: string } })
       })
       .finally(() => setLoading(false));
     
-  }, [user, params.id, router, toast]);
+  }, [user, id, router, toast]);
 
   useEffect(() => {
     if (timeLeft === null || timeLeft <= 0) return;
@@ -57,7 +58,7 @@ export default function ActiveSprintPage({ params }: { params: { id: string } })
   const handleEndSprint = useCallback(async (outcome: 'Completed' | 'Abandoned', optionalBlockerNote?: string) => {
     if (!session) return;
     try {
-        await updateSessionState(params.id, outcome, {
+        await updateSessionState(id, outcome, {
             outcome,
             endTime: serverTimestamp(),
             ...(optionalBlockerNote && { optionalBlockerNote }),
@@ -68,7 +69,7 @@ export default function ActiveSprintPage({ params }: { params: { id: string } })
     } catch(error) {
         toast({ variant: 'destructive', title: 'Error', description: 'Could not end sprint.' });
     }
-  }, [session, params.id, router, toast]);
+  }, [session, id, router, toast]);
 
   useEffect(() => {
     if (timeLeft !== null && timeLeft <= 0 && session) {
