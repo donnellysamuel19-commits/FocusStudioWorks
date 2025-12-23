@@ -1,5 +1,3 @@
-
-
 import {
   collection,
   addDoc,
@@ -20,8 +18,9 @@ import type { AssignmentGoal, StudySession } from '@/types';
 
 const isDevBypass = process.env.NEXT_PUBLIC_DEV_AUTH_BYPASS === 'true';
 
-// In-memory store for dev mode
-let mockAssignments: AssignmentGoal[] = [
+// --- In-memory store for dev mode ---
+
+const initialMockAssignments: AssignmentGoal[] = [
     {
         id: 'dev-assignment-1',
         userId: 'dev-user',
@@ -37,7 +36,7 @@ let mockAssignments: AssignmentGoal[] = [
     }
 ];
 
-let mockSessions: StudySession[] = [
+const initialMockSessions: StudySession[] = [
     {
         id: 'dev-session-1',
         userId: 'dev-user',
@@ -80,26 +79,57 @@ let mockSessions: StudySession[] = [
     }
 ];
 
+
 // Helper to restore Timestamps from serialized data
-const restoreTimestamps = <T extends { [key: string]: any }>(data: T): T => {
+const restoreTimestamps = <T extends { [key: string]: any } | { [key: string]: any }[]>(data: T): T => {
     if (!data) return data;
-    const restored: T = { ...data };
+    if (Array.isArray(data)) {
+        return data.map(item => restoreTimestamps(item)) as T;
+    }
+    const restored: { [key: string]: any } = { ...data };
     for (const key in restored) {
         if (restored[key] && typeof restored[key] === 'object' && 'seconds' in restored[key] && 'nanoseconds' in restored[key]) {
-            restored[key] = new Timestamp((restored[key] as any).seconds, (restored[key] as any).nanoseconds) as any;
+            restored[key] = new Timestamp((restored[key] as any).seconds, (restored[key] as any).nanoseconds);
         }
     }
-    return restored;
+    return restored as T;
 }
 
-const deepClone = <T>(obj: T): T => {
-    return restoreTimestamps(JSON.parse(JSON.stringify(obj)));
+const getMockData = (): { assignments: AssignmentGoal[], sessions: StudySession[] } => {
+    if (typeof window === 'undefined') {
+        return { assignments: initialMockAssignments, sessions: initialMockSessions };
+    }
+    const assignmentsStr = sessionStorage.getItem('mockAssignments');
+    const sessionsStr = sessionStorage.getItem('mockSessions');
+
+    const assignments = assignmentsStr ? restoreTimestamps(JSON.parse(assignmentsStr)) as AssignmentGoal[] : initialMockAssignments;
+    const sessions = sessionsStr ? restoreTimestamps(JSON.parse(sessionsStr)) as StudySession[] : initialMockSessions;
+    
+    if (!assignmentsStr) {
+        sessionStorage.setItem('mockAssignments', JSON.stringify(assignments));
+    }
+    if (!sessionsStr) {
+        sessionStorage.setItem('mockSessions', JSON.stringify(sessions));
+    }
+
+    return { assignments, sessions };
 }
+
+const setMockData = (data: { assignments?: AssignmentGoal[], sessions?: StudySession[] }) => {
+    if (typeof window === 'undefined') return;
+    if (data.assignments) {
+        sessionStorage.setItem('mockAssignments', JSON.stringify(data.assignments));
+    }
+    if (data.sessions) {
+        sessionStorage.setItem('mockSessions', JSON.stringify(data.sessions));
+    }
+};
 
 
 // --- AssignmentGoal Functions ---
 export const addAssignment = async (userId: string, title: string, optionalDeadline?: Date): Promise<string> => {
   if (isDevBypass) {
+    const { assignments } = getMockData();
     const newId = `dev-assignment-${Date.now()}`;
     const newAssignment: AssignmentGoal = { 
         id: newId, 
@@ -108,10 +138,11 @@ export const addAssignment = async (userId: string, title: string, optionalDeadl
         createdAt: Timestamp.now(),
         ...(optionalDeadline && { optionalDeadline: Timestamp.fromDate(optionalDeadline) })
     };
-    mockAssignments.push(newAssignment);
+    const updatedAssignments = [...assignments, newAssignment];
+    setMockData({ assignments: updatedAssignments });
     return Promise.resolve(newId);
   }
-  const docRef = await addDoc(collection(db, 'assignmentGoals'), {
+  const docRef = await addDoc(collection(db!, 'assignmentGoals'), {
     userId,
     title,
     optionalDeadline: optionalDeadline ? Timestamp.fromDate(optionalDeadline) : null,
@@ -122,23 +153,25 @@ export const addAssignment = async (userId: string, title: string, optionalDeadl
 
 export const getAssignmentsForUser = async (userId: string): Promise<AssignmentGoal[]> => {
   if (isDevBypass) {
+    const { assignments } = getMockData();
     return Promise.resolve(
-        deepClone(mockAssignments)
+        assignments
             .filter(a => a.userId === userId)
             .sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis())
     );
   }
-  const q = query(collection(db, 'assignmentGoals'), where('userId', '==', userId), orderBy('createdAt', 'desc'));
+  const q = query(collection(db!, 'assignmentGoals'), where('userId', '==', userId), orderBy('createdAt', 'desc'));
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AssignmentGoal));
 };
 
 export const getAssignment = async (assignmentId: string): Promise<AssignmentGoal | null> => {
   if (isDevBypass) {
-    const assignment = mockAssignments.find(a => a.id === assignmentId) || null;
-    return Promise.resolve(assignment ? deepClone(assignment) : null);
+    const { assignments } = getMockData();
+    const assignment = assignments.find(a => a.id === assignmentId) || null;
+    return Promise.resolve(assignment);
   }
-  const docRef = doc(db, 'assignmentGoals', assignmentId);
+  const docRef = doc(db!, 'assignmentGoals', assignmentId);
   const docSnap = await getDoc(docRef);
   return docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } as AssignmentGoal : null;
 };
@@ -148,6 +181,7 @@ export type StudySessionInput = Omit<StudySession, 'id' | 'userId' | 'assignment
 
 export const addStudySession = async (userId: string, assignmentId: string, sessionData: StudySessionInput): Promise<string> => {
   if (isDevBypass) {
+    const { sessions } = getMockData();
     const newId = `dev-session-${Date.now()}`;
     const newSession: StudySession = {
         ...sessionData,
@@ -157,10 +191,11 @@ export const addStudySession = async (userId: string, assignmentId: string, sess
         state: 'Pending', 
         createdAt: Timestamp.now() 
     };
-    mockSessions.push(newSession);
+    const updatedSessions = [...sessions, newSession];
+    setMockData({ sessions: updatedSessions });
     return Promise.resolve(newId);
   }
-  const docRef = await addDoc(collection(db, 'studySessions'), {
+  const docRef = await addDoc(collection(db!, 'studySessions'), {
     ...sessionData,
     userId,
     assignmentId,
@@ -172,58 +207,65 @@ export const addStudySession = async (userId: string, assignmentId: string, sess
 
 export const updateStudySession = async (sessionId: string, data: Partial<StudySessionInput>): Promise<void> => {
     if (isDevBypass) {
-        const sessionIndex = mockSessions.findIndex(s => s.id === sessionId);
+        const { sessions } = getMockData();
+        const sessionIndex = sessions.findIndex(s => s.id === sessionId);
         if (sessionIndex !== -1) {
-            mockSessions[sessionIndex] = { ...mockSessions[sessionIndex], ...data };
+            sessions[sessionIndex] = { ...sessions[sessionIndex], ...data };
+            setMockData({ sessions });
         }
         return Promise.resolve();
     }
-    const docRef = doc(db, 'studySessions', sessionId);
+    const docRef = doc(db!, 'studySessions', sessionId);
     await updateDoc(docRef, data);
 };
 
 export const getStudySession = async (sessionId: string): Promise<StudySession | null> => {
   if (isDevBypass) {
-    const session = mockSessions.find(s => s.id === sessionId) || null;
-    return Promise.resolve(session ? deepClone(session) : null);
+    const { sessions } = getMockData();
+    const session = sessions.find(s => s.id === sessionId) || null;
+    return Promise.resolve(session);
   }
-  const docRef = doc(db, 'studySessions', sessionId);
+  const docRef = doc(db!, 'studySessions', sessionId);
   const docSnap = await getDoc(docRef);
   return docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } as StudySession : null;
 }
 
 export const getSessionsForAssignment = async (assignmentId: string): Promise<StudySession[]> => {
   if (isDevBypass) {
+    const { sessions } = getMockData();
     return Promise.resolve(
-        deepClone(mockSessions)
+        sessions
             .filter(s => s.assignmentId === assignmentId)
             .sort((a,b) => b.createdAt.toMillis() - a.createdAt.toMillis())
     );
   }
-  const q = query(collection(db, 'studySessions'), where('assignmentId', '==', assignmentId), orderBy('createdAt', 'desc'));
+  const q = query(collection(db!, 'studySessions'), where('assignmentId', '==', assignmentId), orderBy('createdAt', 'desc'));
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StudySession));
 };
 
 export const getAllSessionsForUser = async (userId: string): Promise<StudySession[]> => {
     if (isDevBypass) {
+        const { sessions } = getMockData();
         return Promise.resolve(
-            deepClone(mockSessions)
+            sessions
                 .filter(s => s.userId === userId)
                 .sort((a,b) => b.createdAt.toMillis() - a.createdAt.toMillis())
         );
     }
-    const q = query(collection(db, 'studySessions'), where('userId', '==', userId), orderBy('createdAt', 'desc'));
+    const q = query(collection(db!, 'studySessions'), where('userId', '==', userId), orderBy('createdAt', 'desc'));
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StudySession));
 };
 
 export const deleteStudySession = async (sessionId: string): Promise<void> => {
     if (isDevBypass) {
-        const sessionIndex = mockSessions.findIndex(s => s.id === sessionId);
+        let { sessions } = getMockData();
+        const sessionIndex = sessions.findIndex(s => s.id === sessionId);
         if (sessionIndex > -1) {
-            if (mockSessions[sessionIndex].state === 'Pending') {
-                mockSessions.splice(sessionIndex, 1);
+            if (sessions[sessionIndex].state === 'Pending') {
+                sessions.splice(sessionIndex, 1);
+                setMockData({ sessions });
                 return Promise.resolve();
             } else {
                  return Promise.reject(new Error("Only pending sessions can be deleted."));
@@ -231,7 +273,7 @@ export const deleteStudySession = async (sessionId: string): Promise<void> => {
         }
         return Promise.reject(new Error("Session not found."));
     }
-    const docRef = doc(db, 'studySessions', sessionId);
+    const docRef = doc(db!, 'studySessions', sessionId);
     const docSnap = await getDoc(docRef);
     if (docSnap.exists() && docSnap.data().state === 'Pending') {
         await deleteDoc(docRef);
@@ -244,20 +286,22 @@ export const deleteStudySession = async (sessionId: string): Promise<void> => {
 
 export const updateSessionState = async (sessionId: string, state: StudySession['state'], data: Partial<StudySession> = {}): Promise<void> => {
     if (isDevBypass) {
-        const sessionIndex = mockSessions.findIndex(s => s.id === sessionId);
+        const { sessions } = getMockData();
+        const sessionIndex = sessions.findIndex(s => s.id === sessionId);
         if (sessionIndex !== -1) {
             const updatedData: Partial<StudySession> = { ...data };
-            // Ensure server-like timestamps are converted to actual Timestamp objects
+             // Ensure server-like timestamps are converted to actual Timestamp objects
             if (data.startTime) {
                 updatedData.startTime = Timestamp.now();
             }
             if (data.endTime) {
                 updatedData.endTime = Timestamp.now();
             }
-            mockSessions[sessionIndex] = { ...mockSessions[sessionIndex], ...updatedData, state };
+            sessions[sessionIndex] = { ...sessions[sessionIndex], ...updatedData, state };
+            setMockData({ sessions });
         }
         return Promise.resolve();
     }
-    const docRef = doc(db, 'studySessions', sessionId);
+    const docRef = doc(db!, 'studySessions', sessionId);
     await updateDoc(docRef, { state, ...data });
 };
