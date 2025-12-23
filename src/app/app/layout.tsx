@@ -87,9 +87,7 @@ export default function ProtectedLayout({
             </SidebarMenuItem>
           </SidebarMenu>
           <SidebarFooter>
-            <Button asChild>
-              <Link href="/app/assignments/new"><PlusCircle />New Assignment</Link>
-            </Button>
+            
           </SidebarFooter>
         </SidebarContent>
       </Sidebar>
