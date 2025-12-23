@@ -30,11 +30,11 @@ type FormValues = z.infer<typeof formSchema>;
 
 // The params prop type needs to be optional for the 'new' route, but required for 'edit'.
 type PageProps = {
-    params: { id: string, sessionId?: string }
+    params: Promise<{ id: string, sessionId?: string }>
 }
 
 export default function NewOrEditSprintPage({ params }: PageProps) {
-  const { id: assignmentId, sessionId } = params;
+  const { id: assignmentId, sessionId } = use(params);
   const { toast } = useToast();
   const router = useRouter();
   const { user } = useAuth();
@@ -199,5 +199,3 @@ export default function NewOrEditSprintPage({ params }: PageProps) {
     </div>
   );
 }
-
-    

@@ -8,7 +8,5 @@ import { use } from 'react';
 
 export default function EditSprintPage({ params }: { params: Promise<{ id: string, sessionId: string }> }) {
   const resolvedParams = use(params);
-  return <NewOrEditSprintPage params={resolvedParams} />;
+  return <NewOrEditSprintPage params={Promise.resolve(resolvedParams)} />;
 }
-
-    

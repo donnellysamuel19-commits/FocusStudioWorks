@@ -101,5 +101,3 @@ export default function SprintConfirmationPage({ params }: { params: Promise<{ i
     </div>
   );
 }
-
-    

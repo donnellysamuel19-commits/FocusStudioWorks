@@ -144,15 +144,15 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
       </DialogHeader>
       <div className="space-y-4 text-sm">
         <div className="grid grid-cols-3 gap-2">
-          <p className="text-muted-foreground col-span-1">Duration</p>
+          <div className="text-muted-foreground col-span-1">Duration</div>
           <p className="col-span-2">{session.durationMinutes} minutes</p>
         </div>
          <div className="grid grid-cols-3 gap-2">
-          <p className="text-muted-foreground col-span-1">Next Action</p>
+          <div className="text-muted-foreground col-span-1">Next Action</div>
           <p className="col-span-2">{session.nextAction}</p>
         </div>
          <div className="grid grid-cols-3 gap-2">
-          <p className="text-muted-foreground col-span-1">Deliverable</p>
+          <div className="text-muted-foreground col-span-1">Deliverable</div>
           <p className="col-span-2">{session.sprintDeliverable}</p>
         </div>
         <div className="grid grid-cols-3 gap-2">
@@ -163,25 +163,25 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
         </div>
         {session.startTime && (
            <div className="grid grid-cols-3 gap-2">
-            <p className="text-muted-foreground col-span-1">Started</p>
+            <div className="text-muted-foreground col-span-1">Started</div>
             <p className="col-span-2">{format(session.startTime.toDate(), 'PPpp')}</p>
           </div>
         )}
         {session.endTime && (
           <div className="grid grid-cols-3 gap-2">
-            <p className="text-muted-foreground col-span-1">Ended</p>
+            <div className="text-muted-foreground col-span-1">Ended</div>
             <p className="col-span-2">{format(session.endTime.toDate(), 'PPpp')}</p>
           </div>
         )}
         {session.outcome && (
           <div className="grid grid-cols-3 gap-2">
-            <p className="text-muted-foreground col-span-1">Outcome</p>
+            <div className="text-muted-foreground col-span-1">Outcome</div>
             <p className="col-span-2">{session.outcome}</p>
           </div>
         )}
         {session.optionalBlockerNote && (
           <div className="grid grid-cols-3 gap-2">
-            <p className="text-muted-foreground col-span-1">Blocker</p>
+            <div className="text-muted-foreground col-span-1">Blocker</div>
             <p className="col-span-2 text-destructive/80">{session.optionalBlockerNote}</p>
           </div>
         )}
