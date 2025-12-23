@@ -4,8 +4,11 @@
 // The actual logic is in `src/app/app/assignments/[id]/sprint/new/page.tsx`.
 
 import NewOrEditSprintPage from '../../new/page';
+import { use } from 'react';
 
-export default function EditSprintPage({ params }: { params: { id: string, sessionId: string } }) {
-  const { id, sessionId } = params;
-  return <NewOrEditSprintPage params={{ id, sessionId }} />;
+export default function EditSprintPage({ params }: { params: Promise<{ id: string, sessionId: string }> }) {
+  const resolvedParams = use(params);
+  return <NewOrEditSprintPage params={resolvedParams} />;
 }
+
+    

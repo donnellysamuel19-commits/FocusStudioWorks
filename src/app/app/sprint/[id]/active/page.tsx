@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import { getStudySession, updateSessionState } from '@/lib/firebase/firestore';
@@ -13,8 +13,8 @@ import { Loader2, CheckCircle, XCircle, Target, Rocket } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Textarea } from '@/components/ui/textarea';
 
-export default function ActiveSprintPage({ params }: { params: { id: string } }) {
-  const { id } = params;
+export default function ActiveSprintPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   const { user } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
@@ -145,3 +145,5 @@ export default function ActiveSprintPage({ params }: { params: { id: string } })
     </div>
   );
 }
+
+    

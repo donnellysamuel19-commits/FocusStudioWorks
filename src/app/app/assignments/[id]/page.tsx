@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, use } from 'react';
 import { useAuth } from '@/lib/auth';
 import { getAssignment, getSessionsForAssignment, deleteStudySession } from '@/lib/firebase/firestore';
 import type { AssignmentGoal, StudySession } from '@/types';
@@ -39,8 +39,8 @@ import {
 } from "@/components/ui/dialog";
 
 
-export default function AssignmentDetailPage({ params }: { params: { id: string } }) {
-  const { id } = params;
+export default function AssignmentDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   const { user } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
@@ -308,3 +308,5 @@ export default function AssignmentDetailPage({ params }: { params: { id: string 
     </div>
   );
 }
+
+    

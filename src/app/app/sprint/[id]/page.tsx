@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import { getStudySession, updateSessionState } from '@/lib/firebase/firestore';
@@ -12,8 +12,8 @@ import { useToast } from '@/hooks/use-toast';
 import { serverTimestamp } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 
-export default function SprintConfirmationPage({ params }: { params: { id: string } }) {
-  const { id } = params;
+export default function SprintConfirmationPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   const { user } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
@@ -101,3 +101,5 @@ export default function SprintConfirmationPage({ params }: { params: { id: strin
     </div>
   );
 }
+
+    

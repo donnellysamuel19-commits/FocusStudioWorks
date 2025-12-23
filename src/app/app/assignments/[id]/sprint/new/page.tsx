@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, use } from 'react';
 import { useAuth } from '@/lib/auth';
 import { addStudySession, getStudySession, updateStudySession } from '@/lib/firebase/firestore';
 import { Loader2 } from 'lucide-react';
@@ -28,7 +28,12 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-export default function NewOrEditSprintPage({ params }: { params: { id: string, sessionId?: string } }) {
+// The params prop type needs to be optional for the 'new' route, but required for 'edit'.
+type PageProps = {
+    params: { id: string, sessionId?: string }
+}
+
+export default function NewOrEditSprintPage({ params }: PageProps) {
   const { id: assignmentId, sessionId } = params;
   const { toast } = useToast();
   const router = useRouter();
@@ -48,7 +53,7 @@ export default function NewOrEditSprintPage({ params }: { params: { id: string, 
   });
 
   useEffect(() => {
-    if (isEditMode && sessionId) {
+    if (isEditMode && sessionId && user) {
       getStudySession(sessionId).then(session => {
         if (session && session.userId === user?.uid) {
           form.reset({
@@ -194,3 +199,5 @@ export default function NewOrEditSprintPage({ params }: { params: { id: string, 
     </div>
   );
 }
+
+    
