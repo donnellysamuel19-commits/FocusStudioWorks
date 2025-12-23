@@ -8,7 +8,7 @@ import type { StudySession } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { serverTimestamp } from 'firebase/firestore';
+import { serverTimestamp, Timestamp } from 'firebase/firestore';
 import { Loader2, CheckCircle, XCircle, Target, Rocket } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Textarea } from '@/components/ui/textarea';
@@ -23,38 +23,6 @@ export default function ActiveSprintPage({ params }: { params: Promise<{ id: str
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [blockerNote, setBlockerNote] = useState('');
 
-  useEffect(() => {
-    if (!user || !id) return;
-    
-    getStudySession(id)
-      .then(sessionData => {
-        if (sessionData && sessionData.userId === user.uid && sessionData.state === 'Active' && sessionData.startTime) {
-          setSession(sessionData);
-          const elapsedSeconds = (Date.now() - sessionData.startTime.toDate().getTime()) / 1000;
-          const initialRemaining = sessionData.durationMinutes * 60 - elapsedSeconds;
-          setTimeLeft(Math.max(0, initialRemaining));
-        } else {
-          toast({ variant: 'destructive', title: 'Error', description: 'Active sprint not found.' });
-          router.replace('/app/dashboard');
-        }
-      })
-      .catch(error => {
-        console.error("Failed to load sprint data:", error);
-        toast({ variant: 'destructive', title: 'Error', description: 'Failed to load the sprint data.' });
-        router.replace('/app/dashboard');
-      })
-      .finally(() => setLoading(false));
-    
-  }, [user, id, router, toast]);
-
-  useEffect(() => {
-    if (timeLeft === null || timeLeft <= 0) return;
-    const timer = setInterval(() => {
-      setTimeLeft(prev => (prev ? prev - 1 : 0));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [timeLeft]);
-  
   const handleEndSprint = useCallback(async (outcome: 'Completed' | 'Abandoned', optionalBlockerNote?: string) => {
     if (!session) return;
     try {
@@ -72,9 +40,47 @@ export default function ActiveSprintPage({ params }: { params: Promise<{ id: str
   }, [session, id, router, toast]);
 
   useEffect(() => {
-    if (timeLeft !== null && timeLeft <= 0 && session) {
-        handleEndSprint('Completed');
-    }
+    if (!user || !id) return;
+    
+    getStudySession(id)
+      .then(sessionData => {
+        if (sessionData && sessionData.userId === user.uid && sessionData.state === 'Active' && sessionData.startTime) {
+          setSession(sessionData);
+          // startTime from mock is a plain object, needs to be converted to Timestamp
+          const startTime = new Timestamp(sessionData.startTime.seconds, sessionData.startTime.nanoseconds);
+          const elapsedSeconds = (Date.now() - startTime.toDate().getTime()) / 1000;
+          const initialRemaining = sessionData.durationMinutes * 60 - elapsedSeconds;
+          
+          if (initialRemaining <= 0) {
+            handleEndSprint('Completed');
+          } else {
+            setTimeLeft(initialRemaining);
+          }
+
+        } else {
+          toast({ variant: 'destructive', title: 'Error', description: 'Active sprint not found.' });
+          router.replace('/app/dashboard');
+        }
+      })
+      .catch(error => {
+        console.error("Failed to load sprint data:", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to load the sprint data.' });
+        router.replace('/app/dashboard');
+      })
+      .finally(() => setLoading(false));
+    
+  }, [user, id, router, toast, handleEndSprint]);
+
+  useEffect(() => {
+    if (timeLeft === null) return;
+    if (timeLeft <= 0) {
+        if(session) handleEndSprint('Completed');
+        return;
+    };
+    const timer = setInterval(() => {
+      setTimeLeft(prev => (prev ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
   }, [timeLeft, session, handleEndSprint]);
 
   if (loading || session === null || timeLeft === null) {
@@ -145,5 +151,3 @@ export default function ActiveSprintPage({ params }: { params: Promise<{ id: str
     </div>
   );
 }
-
-    

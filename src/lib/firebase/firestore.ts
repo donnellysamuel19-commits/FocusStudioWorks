@@ -1,4 +1,5 @@
 
+
 import {
   collection,
   addDoc,
@@ -106,7 +107,7 @@ export const addAssignment = async (userId: string, title: string, optionalDeadl
 export const getAssignmentsForUser = async (userId: string): Promise<AssignmentGoal[]> => {
   if (isDevBypass) {
     const userAssignments = mockAssignments.filter(a => a.userId === userId);
-    return Promise.resolve(userAssignments.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis()));
+    return Promise.resolve(JSON.parse(JSON.stringify(userAssignments.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis()))));
   }
   const q = query(collection(db, 'assignmentGoals'), where('userId', '==', userId), orderBy('createdAt', 'desc'));
   const querySnapshot = await getDocs(q);
@@ -116,7 +117,7 @@ export const getAssignmentsForUser = async (userId: string): Promise<AssignmentG
 export const getAssignment = async (assignmentId: string): Promise<AssignmentGoal | null> => {
   if (isDevBypass) {
     const assignment = mockAssignments.find(a => a.id === assignmentId) || null;
-    return Promise.resolve(assignment);
+    return Promise.resolve(JSON.parse(JSON.stringify(assignment)));
   }
   const docRef = doc(db, 'assignmentGoals', assignmentId);
   const docSnap = await getDoc(docRef);
@@ -165,7 +166,7 @@ export const updateStudySession = async (sessionId: string, data: Partial<StudyS
 export const getStudySession = async (sessionId: string): Promise<StudySession | null> => {
   if (isDevBypass) {
     const session = mockSessions.find(s => s.id === sessionId) || null;
-    return Promise.resolve(session);
+    return Promise.resolve(session ? JSON.parse(JSON.stringify(session)) : null);
   }
   const docRef = doc(db, 'studySessions', sessionId);
   const docSnap = await getDoc(docRef);
@@ -175,7 +176,7 @@ export const getStudySession = async (sessionId: string): Promise<StudySession |
 export const getSessionsForAssignment = async (assignmentId: string): Promise<StudySession[]> => {
   if (isDevBypass) {
     const sessions = mockSessions.filter(s => s.assignmentId === assignmentId);
-    return Promise.resolve(sessions.sort((a,b) => b.createdAt.toMillis() - a.createdAt.toMillis()));
+    return Promise.resolve(JSON.parse(JSON.stringify(sessions.sort((a,b) => b.createdAt.toMillis() - a.createdAt.toMillis()))));
   }
   const q = query(collection(db, 'studySessions'), where('assignmentId', '==', assignmentId), orderBy('createdAt', 'desc'));
   const querySnapshot = await getDocs(q);
@@ -185,7 +186,7 @@ export const getSessionsForAssignment = async (assignmentId: string): Promise<St
 export const getAllSessionsForUser = async (userId: string): Promise<StudySession[]> => {
     if (isDevBypass) {
         const sessions = mockSessions.filter(s => s.userId === userId);
-        return Promise.resolve(sessions.sort((a,b) => b.createdAt.toMillis() - a.createdAt.toMillis()));
+        return Promise.resolve(JSON.parse(JSON.stringify(sessions.sort((a,b) => b.createdAt.toMillis() - a.createdAt.toMillis()))));
     }
     const q = query(collection(db, 'studySessions'), where('userId', '==', userId), orderBy('createdAt', 'desc'));
     const querySnapshot = await getDocs(q);
@@ -219,7 +220,14 @@ export const updateSessionState = async (sessionId: string, state: StudySession[
     if (isDevBypass) {
         const sessionIndex = mockSessions.findIndex(s => s.id === sessionId);
         if (sessionIndex !== -1) {
-            mockSessions[sessionIndex] = { ...mockSessions[sessionIndex], ...data, state };
+            const updatedData = { ...data };
+            if (data.startTime && !(data.startTime instanceof Timestamp)) {
+                updatedData.startTime = Timestamp.now();
+            }
+            if (data.endTime && !(data.endTime instanceof Timestamp)) {
+                updatedData.endTime = Timestamp.now();
+            }
+            mockSessions[sessionIndex] = { ...mockSessions[sessionIndex], ...updatedData, state };
         }
         return Promise.resolve();
     }
