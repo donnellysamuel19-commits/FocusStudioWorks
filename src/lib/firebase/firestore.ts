@@ -162,15 +162,13 @@ export const getAssignmentsForUser = async (userId: string): Promise<AssignmentG
     );
   }
   
-  // Query without ordering, to avoid needing a composite index
   const q = query(collection(db!, 'assignmentGoals'), where('userId', '==', userId));
   const querySnapshot = await getDocs(q);
   const assignments = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AssignmentGoal));
 
-  // Sort the results on the client-side
   assignments.sort((a, b) => {
-      const aTime = a.createdAt?.toMillis() || 0;
-      const bTime = b.createdAt?.toMillis() || 0;
+      const aTime = a.createdAt?.toMillis() ?? 0;
+      const bTime = b.createdAt?.toMillis() ?? 0;
       return bTime - aTime;
   });
 
@@ -242,18 +240,31 @@ export const getStudySession = async (sessionId: string): Promise<StudySession |
   return docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } as StudySession : null;
 }
 
-export const getSessionsForAssignment = async (assignmentId: string): Promise<StudySession[]> => {
+export const getSessionsForAssignment = async (assignmentId: string, userId: string): Promise<StudySession[]> => {
   if (isDevBypass) {
     const { sessions } = getMockData();
     return Promise.resolve(
         sessions
-            .filter(s => s.assignmentId === assignmentId)
+            .filter(s => s.assignmentId === assignmentId && s.userId === userId)
             .sort((a,b) => b.createdAt.toMillis() - a.createdAt.toMillis())
     );
   }
-  const q = query(collection(db!, 'studySessions'), where('assignmentId', '==', assignmentId), orderBy('createdAt', 'desc'));
+  const q = query(
+    collection(db!, 'studySessions'), 
+    where('assignmentId', '==', assignmentId),
+    where('userId', '==', userId),
+  );
   const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StudySession));
+  const sessions = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StudySession));
+
+  // Sort client-side
+  sessions.sort((a, b) => {
+      const aTime = a.createdAt?.toMillis() ?? 0;
+      const bTime = b.createdAt?.toMillis() ?? 0;
+      return bTime - aTime;
+  });
+
+  return sessions;
 };
 
 export const getAllSessionsForUser = async (userId: string): Promise<StudySession[]> => {
@@ -265,9 +276,17 @@ export const getAllSessionsForUser = async (userId: string): Promise<StudySessio
                 .sort((a,b) => b.createdAt.toMillis() - a.createdAt.toMillis())
         );
     }
-    const q = query(collection(db!, 'studySessions'), where('userId', '==', userId), orderBy('createdAt', 'desc'));
+    const q = query(collection(db!, 'studySessions'), where('userId', '==', userId));
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StudySession));
+    const sessions = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StudySession));
+    
+    sessions.sort((a, b) => {
+      const aTime = a.createdAt?.toMillis() ?? 0;
+      const bTime = b.createdAt?.toMillis() ?? 0;
+      return bTime - aTime;
+    });
+
+    return sessions;
 };
 
 export const deleteStudySession = async (sessionId: string): Promise<void> => {

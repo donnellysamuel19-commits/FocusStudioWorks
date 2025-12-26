@@ -55,7 +55,7 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
       setLoading(true);
       Promise.all([
         getAssignment(id),
-        getSessionsForAssignment(id),
+        getSessionsForAssignment(id, user.uid),
       ]).then(([assignmentData, sessionsData]) => {
         if (assignmentData && assignmentData.userId === user.uid) {
             setAssignment(assignmentData);
