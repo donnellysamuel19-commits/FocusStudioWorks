@@ -15,7 +15,7 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import { db } from './config';
-import type { AssignmentGoal, StudySession } from '@/types';
+import type { AssignmentGoal, StudySession, AiOutput } from '@/types';
 
 const isDevBypass = process.env.NEXT_PUBLIC_DEV_AUTH_BYPASS === 'true';
 
@@ -96,15 +96,17 @@ const restoreTimestamps = <T extends { [key: string]: any } | { [key: string]: a
     return restored as T;
 }
 
-const getMockData = (): { assignments: AssignmentGoal[], sessions: StudySession[] } => {
+const getMockData = (): { assignments: AssignmentGoal[], sessions: StudySession[], aiOutputs: AiOutput[] } => {
     if (typeof window === 'undefined') {
-        return { assignments: initialMockAssignments, sessions: initialMockSessions };
+        return { assignments: initialMockAssignments, sessions: initialMockSessions, aiOutputs: [] };
     }
     const assignmentsStr = sessionStorage.getItem('mockAssignments');
     const sessionsStr = sessionStorage.getItem('mockSessions');
+    const aiOutputsStr = sessionStorage.getItem('mockAiOutputs');
 
     const assignments = assignmentsStr ? restoreTimestamps(JSON.parse(assignmentsStr)) as AssignmentGoal[] : initialMockAssignments;
     const sessions = sessionsStr ? restoreTimestamps(JSON.parse(sessionsStr)) as StudySession[] : initialMockSessions;
+    const aiOutputs = aiOutputsStr ? restoreTimestamps(JSON.parse(aiOutputsStr)) as AiOutput[] : [];
     
     if (!assignmentsStr) {
         sessionStorage.setItem('mockAssignments', JSON.stringify(assignments));
@@ -112,17 +114,24 @@ const getMockData = (): { assignments: AssignmentGoal[], sessions: StudySession[
     if (!sessionsStr) {
         sessionStorage.setItem('mockSessions', JSON.stringify(sessions));
     }
+    if (!aiOutputsStr) {
+        sessionStorage.setItem('mockAiOutputs', JSON.stringify(aiOutputs));
+    }
 
-    return { assignments, sessions };
+
+    return { assignments, sessions, aiOutputs };
 }
 
-const setMockData = (data: { assignments?: AssignmentGoal[], sessions?: StudySession[] }) => {
+const setMockData = (data: { assignments?: AssignmentGoal[], sessions?: StudySession[], aiOutputs?: AiOutput[] }) => {
     if (typeof window === 'undefined') return;
     if (data.assignments) {
         sessionStorage.setItem('mockAssignments', JSON.stringify(data.assignments));
     }
     if (data.sessions) {
         sessionStorage.setItem('mockSessions', JSON.stringify(data.sessions));
+    }
+    if (data.aiOutputs) {
+        sessionStorage.setItem('mockAiOutputs', JSON.stringify(data.aiOutputs));
     }
 };
 
@@ -335,4 +344,18 @@ export const updateSessionState = async (sessionId: string, state: StudySession[
     }
     const docRef = doc(db!, 'studySessions', sessionId);
     await updateDoc(docRef, { state, ...data });
+};
+
+export const saveAiOutput = async (data: AiOutput): Promise<void> => {
+  if (isDevBypass) {
+    const { aiOutputs } = getMockData();
+    const newOutput = { ...data, createdAt: Timestamp.now() };
+    const updatedAiOutputs = [...aiOutputs, newOutput];
+    setMockData({ aiOutputs: updatedAiOutputs });
+    return Promise.resolve();
+  }
+  await addDoc(collection(db!, 'aiOutputs'), {
+    ...data,
+    createdAt: serverTimestamp(),
+  });
 };

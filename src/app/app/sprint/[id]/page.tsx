@@ -11,6 +11,7 @@ import { Loader2, Check, ArrowRight, Clock, Target, Rocket } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast';
 import { serverTimestamp } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
+import { AiClarification } from '@/components/ui/ai-clarification';
 
 export default function SprintConfirmationPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -89,6 +90,7 @@ export default function SprintConfirmationPage({ params }: { params: Promise<{ i
                 <h3 className="font-semibold flex items-center gap-2"><Rocket className="h-5 w-5 text-primary" /> Deliverable</h3>
                 <p className="text-muted-foreground pl-7">{session.sprintDeliverable}</p>
             </div>
+            {session && <AiClarification session={session} />}
         </CardContent>
         <CardFooter className="flex justify-end gap-2">
             <Button variant="ghost" onClick={() => router.back()} disabled={isStarting}>Cancel</Button>
