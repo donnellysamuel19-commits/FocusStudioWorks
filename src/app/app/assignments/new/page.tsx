@@ -45,8 +45,12 @@ export default function NewAssignmentPage() {
     try {
       await addAssignment(user.uid, values.title, values.optionalDeadline);
       toast({ title: 'Success', description: 'Assignment created.' });
-      router.push('/app/dashboard');
+
+      // Force a full page reload to ensure dashboard data is re-fetched.
+      window.location.href = '/app/dashboard';
+
     } catch (error) {
+      console.error("Failed to create assignment:", error);
       toast({ variant: 'destructive', title: 'Error', description: 'Could not create assignment.' });
     } finally {
       setIsLoading(false);

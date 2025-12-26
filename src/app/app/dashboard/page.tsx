@@ -11,7 +11,7 @@ import { PlusCircle, BookOpen, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const { user, isDevBypass } = useAuth();
   const [assignments, setAssignments] = useState<AssignmentGoal[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -60,6 +60,11 @@ export default function DashboardPage() {
             </div>
             <CardTitle className="mt-4">No Assignments Yet</CardTitle>
             <CardDescription>Get started by creating your first assignment goal.</CardDescription>
+            {isDevBypass && (
+                <p className="text-xs text-muted-foreground mt-4">
+                No assignments found for UID: {user?.uid}
+                </p>
+            )}
           </CardHeader>
           <CardContent>
              <Button asChild>

@@ -1,3 +1,4 @@
+
 import {
   collection,
   addDoc,
@@ -160,9 +161,20 @@ export const getAssignmentsForUser = async (userId: string): Promise<AssignmentG
             .sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis())
     );
   }
-  const q = query(collection(db!, 'assignmentGoals'), where('userId', '==', userId), orderBy('createdAt', 'desc'));
+  
+  // Query without ordering, to avoid needing a composite index
+  const q = query(collection(db!, 'assignmentGoals'), where('userId', '==', userId));
   const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AssignmentGoal));
+  const assignments = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AssignmentGoal));
+
+  // Sort the results on the client-side
+  assignments.sort((a, b) => {
+      const aTime = a.createdAt?.toMillis() || 0;
+      const bTime = b.createdAt?.toMillis() || 0;
+      return bTime - aTime;
+  });
+
+  return assignments;
 };
 
 export const getAssignment = async (assignmentId: string): Promise<AssignmentGoal | null> => {
