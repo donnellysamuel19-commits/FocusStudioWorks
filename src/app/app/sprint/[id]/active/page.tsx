@@ -132,10 +132,6 @@ export default function ActiveSprintPage({ params }: { params: Promise<{ id: str
         </CardContent>
       </Card>
       <div className="mt-6 flex justify-center gap-4">
-        <Button size="lg" onClick={() => handleEndSprint('Completed')}>
-            <CheckCircle className="mr-2 h-4 w-4" />
-            Complete Sprint
-        </Button>
         <AlertDialog>
             <AlertDialogTrigger asChild>
                 <Button size="lg" variant="destructive">
