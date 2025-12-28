@@ -31,10 +31,18 @@ export default function ActiveSprintPage({ params }: { params: Promise<{ id: str
             endTime: serverTimestamp(),
             ...(optionalBlockerNote && { optionalBlockerNote }),
         });
-        toast({ title: `Sprint ${outcome}`, description: "Great work! Take a short break." });
-        router.push(`/app/assignments/${session.assignmentId}`);
+
+        if (outcome === 'Completed') {
+            toast({ title: `Sprint ${outcome}`, description: "Great work! Take a short break." });
+            router.push(`/app/assignments/${session.assignmentId}`);
+        } else {
+            toast({ title: 'Sprint Abandoned' });
+            router.push('/app/dashboard');
+        }
         router.refresh();
+
     } catch(error) {
+        console.error("Failed to end sprint:", error)
         toast({ variant: 'destructive', title: 'Error', description: 'Could not end sprint.' });
     }
   }, [session, id, router, toast]);

@@ -13,9 +13,10 @@ import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect, use } from 'react';
 import { useAuth } from '@/lib/auth';
-import { addStudySession, getStudySession, updateStudySession } from '@/lib/firebase/firestore';
+import { addStudySession, getStudySession, updateStudySession, updateSessionState } from '@/lib/firebase/firestore';
 import { Loader2 } from 'lucide-react';
 import type { StudySession } from '@/types';
+import { serverTimestamp } from 'firebase/firestore';
 
 const durationOptions = [10, 15, 20, 25] as const;
 
@@ -92,8 +93,9 @@ export default function NewOrEditSprintPage({ params }: PageProps) {
         router.refresh();
       } else {
         const newSprintId = await addStudySession(user.uid, assignmentId, sessionData);
-        toast({ title: 'Sprint Defined', description: 'Your new sprint is ready to start.' });
-        router.push(`/app/sprint/${newSprintId}`);
+        await updateSessionState(newSprintId, 'Active', { startTime: serverTimestamp() });
+        toast({ title: 'Sprint Started!', description: 'Time to focus.' });
+        router.push(`/app/sprint/${newSprintId}/active`);
       }
     } catch (error) {
       console.error(error);
@@ -190,7 +192,7 @@ export default function NewOrEditSprintPage({ params }: PageProps) {
                  <Button type="button" variant="ghost" onClick={() => router.back()}>Cancel</Button>
                 <Button type="submit" disabled={isLoading}>
                   {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {isEditMode ? 'Save Changes' : 'Define Sprint'}
+                  {isEditMode ? 'Save Changes' : 'Start Sprint'}
                 </Button>
               </div>
             </form>
