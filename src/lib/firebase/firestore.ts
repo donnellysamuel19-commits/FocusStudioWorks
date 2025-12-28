@@ -186,6 +186,32 @@ export const getAssignment = async (assignmentId: string): Promise<AssignmentGoa
   return docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } as AssignmentGoal : null;
 };
 
+export const deleteAssignment = async (assignmentId: string): Promise<void> => {
+    if (isDevBypass) {
+        let { assignments, sessions } = getMockData();
+        const updatedAssignments = assignments.filter(a => a.id !== assignmentId);
+        const updatedSessions = sessions.filter(s => s.assignmentId !== assignmentId);
+        setMockData({ assignments: updatedAssignments, sessions: updatedSessions });
+        return Promise.resolve();
+    }
+
+    const batch = writeBatch(db!);
+
+    // 1. Delete the assignment itself
+    const assignmentRef = doc(db!, 'assignmentGoals', assignmentId);
+    batch.delete(assignmentRef);
+
+    // 2. Find and delete all associated study sessions
+    const sessionsQuery = query(collection(db!, 'studySessions'), where('assignmentId', '==', assignmentId));
+    const sessionsSnapshot = await getDocs(sessionsQuery);
+    sessionsSnapshot.forEach(sessionDoc => {
+        batch.delete(sessionDoc.ref);
+    });
+
+    // 3. Commit the batch
+    await batch.commit();
+};
+
 // --- StudySession Functions ---
 export type StudySessionInput = Omit<StudySession, 'id' | 'userId' | 'assignmentId' | 'state' | 'createdAt'>;
 
