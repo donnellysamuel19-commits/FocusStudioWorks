@@ -186,9 +186,13 @@ export const getAssignment = async (assignmentId: string): Promise<AssignmentGoa
   return docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } as AssignmentGoal : null;
 };
 
-export const deleteAssignment = async (assignmentId: string): Promise<void> => {
+export const deleteAssignment = async (assignmentId: string, userId: string): Promise<void> => {
     if (isDevBypass) {
         let { assignments, sessions } = getMockData();
+        const assignmentToDelete = assignments.find(a => a.id === assignmentId);
+        if (!assignmentToDelete || assignmentToDelete.userId !== userId) {
+            return Promise.reject(new Error("Permission denied or assignment not found."));
+        }
         const updatedAssignments = assignments.filter(a => a.id !== assignmentId);
         const updatedSessions = sessions.filter(s => s.assignmentId !== assignmentId);
         setMockData({ assignments: updatedAssignments, sessions: updatedSessions });
@@ -196,19 +200,28 @@ export const deleteAssignment = async (assignmentId: string): Promise<void> => {
     }
 
     const batch = writeBatch(db!);
-
-    // 1. Delete the assignment itself
     const assignmentRef = doc(db!, 'assignmentGoals', assignmentId);
+
+    // First, verify the user owns the document.
+    const assignmentDoc = await getDoc(assignmentRef);
+    if (!assignmentDoc.exists() || assignmentDoc.data().userId !== userId) {
+        throw new Error('Permission denied or assignment not found.');
+    }
+
+    // Add the assignment deletion to the batch
     batch.delete(assignmentRef);
 
-    // 2. Find and delete all associated study sessions
-    const sessionsQuery = query(collection(db!, 'studySessions'), where('assignmentId', '==', assignmentId));
+    // Find and delete all associated study sessions for that user
+    const sessionsQuery = query(
+        collection(db!, 'studySessions'),
+        where('assignmentId', '==', assignmentId),
+        where('userId', '==', userId) // This ensures we only query sessions belonging to the user
+    );
     const sessionsSnapshot = await getDocs(sessionsQuery);
     sessionsSnapshot.forEach(sessionDoc => {
         batch.delete(sessionDoc.ref);
     });
 
-    // 3. Commit the batch
     await batch.commit();
 };
 
