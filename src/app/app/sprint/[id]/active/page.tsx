@@ -6,10 +6,10 @@ import { useAuth } from '@/lib/auth';
 import { getStudySession, updateSessionState } from '@/lib/firebase/firestore';
 import type { StudySession } from '@/types';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { serverTimestamp, Timestamp } from 'firebase/firestore';
-import { Loader2, CheckCircle, XCircle, Target, Rocket } from 'lucide-react';
+import { serverTimestamp } from 'firebase/firestore';
+import { Loader2, CheckCircle, XCircle, Target, Rocket, ArrowLeft, LayoutDashboard } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Textarea } from '@/components/ui/textarea';
 
@@ -22,6 +22,7 @@ export default function ActiveSprintPage({ params }: { params: Promise<{ id: str
   const [loading, setLoading] = useState(true);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [blockerNote, setBlockerNote] = useState('');
+  const [isCompleted, setIsCompleted] = useState(false);
 
   const handleEndSprint = useCallback(async (outcome: 'Completed' | 'Abandoned', optionalBlockerNote?: string) => {
     if (!session) return;
@@ -33,12 +34,13 @@ export default function ActiveSprintPage({ params }: { params: Promise<{ id: str
         });
 
         if (outcome === 'Completed') {
-            toast({ title: `Sprint ${outcome}`, description: "Great work! Take a short break." });
+            toast({ title: "Sprint complete!", description: "Great work! Take a short break." });
+            setIsCompleted(true);
         } else {
             toast({ title: 'Sprint Abandoned' });
+            router.push(`/app/assignments/${session.assignmentId}`);
+            router.refresh();
         }
-        router.push(`/app/assignments/${session.assignmentId}`);
-        router.refresh();
 
     } catch(error) {
         console.error("Failed to end sprint:", error)
@@ -67,40 +69,69 @@ export default function ActiveSprintPage({ params }: { params: Promise<{ id: str
             setTimeLeft(initialRemaining);
           }
 
-        } else {
+        } else if (!isCompleted) {
           toast({ variant: 'destructive', title: 'Error', description: 'Active sprint not found or already completed.' });
           router.replace('/app/dashboard');
         }
       })
       .catch(error => {
         console.error("Failed to load sprint data:", error);
-        toast({ variant: 'destructive', title: 'Error', description: 'Failed to load the sprint data.' });
-        router.replace('/app/dashboard');
+        if (!isCompleted) {
+          toast({ variant: 'destructive', title: 'Error', description: 'Failed to load the sprint data.' });
+          router.replace('/app/dashboard');
+        }
       })
       .finally(() => {
         if(isMounted) setLoading(false)
       });
       
     return () => { isMounted = false; };
-  }, [user, id, router, toast, handleEndSprint]);
+  }, [user, id, router, toast, handleEndSprint, isCompleted]);
 
   useEffect(() => {
     if (timeLeft === null) return;
     if (timeLeft <= 0) {
-        if(session) handleEndSprint('Completed');
+        if(session && !isCompleted) handleEndSprint('Completed');
         return;
     };
     const timer = setInterval(() => {
       setTimeLeft(prev => (prev ? prev - 1 : 0));
     }, 1000);
     return () => clearInterval(timer);
-  }, [timeLeft, session, handleEndSprint]);
+  }, [timeLeft, session, isCompleted, handleEndSprint]);
 
-  if (loading || session === null || timeLeft === null) {
+  if (loading || session === null) {
     return (
       <div className="flex h-full w-full items-center justify-center">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
       </div>
+    );
+  }
+
+  if (isCompleted) {
+    return (
+        <div className="container mx-auto max-w-2xl text-center">
+            <Card>
+                <CardHeader>
+                    <CardTitle className="text-4xl font-headline">Congratulations!</CardTitle>
+                    <CardDescription>You've completed your study sprint.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <CheckCircle className="h-24 w-24 text-green-500 mx-auto animate-pulse" />
+                    <p className="mt-4">You've made great progress. What's next?</p>
+                </CardContent>
+                <CardFooter className="flex justify-center gap-4">
+                    <Button variant="outline" onClick={() => router.push('/app/dashboard')}>
+                        <LayoutDashboard className="mr-2 h-4 w-4" />
+                        Go to Dashboard
+                    </Button>
+                    <Button onClick={() => router.push(`/app/assignments/${session.assignmentId}`)}>
+                        <ArrowLeft className="mr-2 h-4 w-4" />
+                        Back to Assignment
+                    </Button>
+                </CardFooter>
+            </Card>
+        </div>
     );
   }
 
@@ -115,7 +146,7 @@ export default function ActiveSprintPage({ params }: { params: Promise<{ id: str
       <Card className="text-center">
         <CardHeader>
           <CardTitle className="text-6xl font-bold font-mono tabular-nums">
-            {formatTime(timeLeft)}
+            {timeLeft !== null ? formatTime(timeLeft) : '...'}
           </CardTitle>
           <CardDescription>Time to Focus!</CardDescription>
         </CardHeader>

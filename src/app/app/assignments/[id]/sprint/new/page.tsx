@@ -17,13 +17,13 @@ import { addStudySession, getStudySession, updateStudySession } from '@/lib/fire
 import { Loader2 } from 'lucide-react';
 import type { StudySession } from '@/types';
 
-const durationOptions = [10, 15, 20, 25] as const;
+const durationOptions = [1, 10, 15, 20, 25] as const;
 
 const formSchema = z.object({
   targetObject: z.string().min(3, { message: 'Must be at least 3 characters.' }).max(150),
   nextAction: z.string().min(3, { message: 'Must be at least 3 characters.' }).max(150),
   sprintDeliverable: z.string().min(3, { message: 'Must be at least 3 characters.' }).max(150),
-  durationMinutes: z.enum(["10", "15", "20", "25"]),
+  durationMinutes: z.enum(["1", "10", "15", "20", "25"]),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -59,7 +59,7 @@ export default function NewOrEditSprintPage({ params }: PageProps) {
             targetObject: session.targetObject,
             nextAction: session.nextAction,
             sprintDeliverable: session.sprintDeliverable,
-            durationMinutes: String(session.durationMinutes) as "10" | "15" | "20" | "25",
+            durationMinutes: String(session.durationMinutes) as "1" | "10" | "15" | "20" | "25",
           });
         } else {
            toast({ variant: "destructive", title: "Error", description: "Sprint not found." });
@@ -176,7 +176,7 @@ export default function NewOrEditSprintPage({ params }: PageProps) {
                              <FormControl>
                                <RadioGroupItem value={String(duration)} />
                              </FormControl>
-                             <FormLabel className="font-normal">{duration} minutes</FormLabel>
+                             <FormLabel className="font-normal">{duration} minute{duration > 1 ? 's' : ''}</FormLabel>
                            </FormItem>
                         ))}
                       </RadioGroup>
