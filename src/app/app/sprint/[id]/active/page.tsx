@@ -34,11 +34,10 @@ export default function ActiveSprintPage({ params }: { params: Promise<{ id: str
 
         if (outcome === 'Completed') {
             toast({ title: `Sprint ${outcome}`, description: "Great work! Take a short break." });
-            router.push(`/app/assignments/${session.assignmentId}`);
         } else {
             toast({ title: 'Sprint Abandoned' });
-            router.push('/app/dashboard');
         }
+        router.push(`/app/assignments/${session.assignmentId}`);
         router.refresh();
 
     } catch(error) {
