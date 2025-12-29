@@ -13,10 +13,9 @@ import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect, use } from 'react';
 import { useAuth } from '@/lib/auth';
-import { addStudySession, getStudySession, updateStudySession, updateSessionState } from '@/lib/firebase/firestore';
+import { addStudySession, getStudySession, updateStudySession } from '@/lib/firebase/firestore';
 import { Loader2 } from 'lucide-react';
 import type { StudySession } from '@/types';
-import { serverTimestamp } from 'firebase/firestore';
 
 const durationOptions = [10, 15, 20, 25] as const;
 
@@ -29,7 +28,6 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-// The params prop type needs to be optional for the 'new' route, but required for 'edit'.
 type PageProps = {
     params: Promise<{ id: string, sessionId?: string }>
 }
@@ -93,9 +91,8 @@ export default function NewOrEditSprintPage({ params }: PageProps) {
         router.refresh();
       } else {
         const newSprintId = await addStudySession(user.uid, assignmentId, sessionData);
-        await updateSessionState(newSprintId, 'Active', { startTime: serverTimestamp() });
-        toast({ title: 'Sprint Started!', description: 'Time to focus.' });
-        router.push(`/app/sprint/${newSprintId}/active`);
+        toast({ title: 'Sprint Defined', description: 'Confirm your commitment.' });
+        router.push(`/app/assignments/${assignmentId}/sprint/new/commitment?sessionId=${newSprintId}`);
       }
     } catch (error) {
       console.error(error);
