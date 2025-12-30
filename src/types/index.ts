@@ -30,3 +30,13 @@ export type StudySession = {
   optionalBlockerTags?: string[];
   optionalBlockerNote?: string;
 };
+
+export interface AiOutput {
+  id: string;
+  userId: string;
+  assignmentId: string;
+  featureName: string;
+  ai_original: string;
+  human_edited: string;
+  createdAt: any; // Use 'any' or 'Timestamp' from firebase
+};
