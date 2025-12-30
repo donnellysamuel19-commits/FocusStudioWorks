@@ -151,7 +151,7 @@ export const addAssignment = async (userId: string, title: string, optionalDeadl
     };
     const updatedAssignments = [...assignments, newAssignment];
     setMockData({ assignments: updatedAssignments });
-    return Promise.resolve(newId);
+    return newId;
   }
   const docRef = await addDoc(collection(db!, 'assignmentGoals'), {
     userId,
@@ -165,11 +165,9 @@ export const addAssignment = async (userId: string, title: string, optionalDeadl
 export const getAssignmentsForUser = async (userId: string): Promise<AssignmentGoal[]> => {
   if (isDevBypass) {
     const { assignments } = getMockData();
-    return Promise.resolve(
-        assignments
+    return assignments
             .filter(a => a.userId === userId)
-            .sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis())
-    );
+            .sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
   }
   
   const q = query(collection(db!, 'assignmentGoals'), where('userId', '==', userId));
@@ -188,8 +186,7 @@ export const getAssignmentsForUser = async (userId: string): Promise<AssignmentG
 export const getAssignment = async (assignmentId: string): Promise<AssignmentGoal | null> => {
   if (isDevBypass) {
     const { assignments } = getMockData();
-    const assignment = assignments.find(a => a.id === assignmentId) || null;
-    return Promise.resolve(assignment);
+    return assignments.find(a => a.id === assignmentId) || null;
   }
   const docRef = doc(db!, 'assignmentGoals', assignmentId);
   const docSnap = await getDoc(docRef);
@@ -201,12 +198,12 @@ export const deleteAssignment = async (assignmentId: string, userId: string): Pr
         let { assignments, sessions } = getMockData();
         const assignmentToDelete = assignments.find(a => a.id === assignmentId);
         if (!assignmentToDelete || assignmentToDelete.userId !== userId) {
-            return Promise.reject(new Error("Permission denied or assignment not found."));
+            throw new Error("Permission denied or assignment not found.");
         }
         const updatedAssignments = assignments.filter(a => a.id !== assignmentId);
         const updatedSessions = sessions.filter(s => s.assignmentId !== assignmentId);
         setMockData({ assignments: updatedAssignments, sessions: updatedSessions });
-        return Promise.resolve();
+        return;
     }
 
     const batch = writeBatch(db!);
@@ -252,7 +249,7 @@ export const addStudySession = async (userId: string, assignmentId: string, sess
     };
     const updatedSessions = [...sessions, newSession];
     setMockData({ sessions: updatedSessions });
-    return Promise.resolve(newId);
+    return newId;
   }
   const docRef = await addDoc(collection(db!, 'studySessions'), {
     ...sessionData,
@@ -272,7 +269,7 @@ export const updateStudySession = async (sessionId: string, data: Partial<StudyS
             sessions[sessionIndex] = { ...sessions[sessionIndex], ...data };
             setMockData({ sessions });
         }
-        return Promise.resolve();
+        return;
     }
     const docRef = doc(db!, 'studySessions', sessionId);
     await updateDoc(docRef, data);
@@ -281,8 +278,7 @@ export const updateStudySession = async (sessionId: string, data: Partial<StudyS
 export const getStudySession = async (sessionId: string): Promise<StudySession | null> => {
   if (isDevBypass) {
     const { sessions } = getMockData();
-    const session = sessions.find(s => s.id === sessionId) || null;
-    return Promise.resolve(session);
+    return sessions.find(s => s.id === sessionId) || null;
   }
   const docRef = doc(db!, 'studySessions', sessionId);
   const docSnap = await getDoc(docRef);
@@ -292,11 +288,9 @@ export const getStudySession = async (sessionId: string): Promise<StudySession |
 export const getSessionsForAssignment = async (assignmentId: string, userId: string): Promise<StudySession[]> => {
   if (isDevBypass) {
     const { sessions } = getMockData();
-    return Promise.resolve(
-        sessions
+    return sessions
             .filter(s => s.assignmentId === assignmentId && s.userId === userId)
-            .sort((a,b) => b.createdAt.toMillis() - a.createdAt.toMillis())
-    );
+            .sort((a,b) => b.createdAt.toMillis() - a.createdAt.toMillis());
   }
   const q = query(
     collection(db!, 'studySessions'), 
@@ -319,11 +313,9 @@ export const getSessionsForAssignment = async (assignmentId: string, userId: str
 export const getAllSessionsForUser = async (userId: string): Promise<StudySession[]> => {
     if (isDevBypass) {
         const { sessions } = getMockData();
-        return Promise.resolve(
-            sessions
+        return sessions
                 .filter(s => s.userId === userId)
-                .sort((a,b) => b.createdAt.toMillis() - a.createdAt.toMillis())
-        );
+                .sort((a,b) => b.createdAt.toMillis() - a.createdAt.toMillis());
     }
     const q = query(collection(db!, 'studySessions'), where('userId', '==', userId));
     const querySnapshot = await getDocs(q);
@@ -346,12 +338,12 @@ export const deleteStudySession = async (sessionId: string): Promise<void> => {
             if (sessions[sessionIndex].state === 'Pending') {
                 sessions.splice(sessionIndex, 1);
                 setMockData({ sessions });
-                return Promise.resolve();
+                return;
             } else {
-                 return Promise.reject(new Error("Only pending sessions can be deleted."));
+                 throw new Error("Only pending sessions can be deleted.");
             }
         }
-        return Promise.reject(new Error("Session not found."));
+        throw new Error("Session not found.");
     }
     const docRef = doc(db!, 'studySessions', sessionId);
     const docSnap = await getDoc(docRef);
@@ -380,7 +372,7 @@ export const updateSessionState = async (sessionId: string, state: StudySession[
             sessions[sessionIndex] = { ...sessions[sessionIndex], ...updatedData, state };
             setMockData({ sessions });
         }
-        return Promise.resolve();
+        return;
     }
     const docRef = doc(db!, 'studySessions', sessionId);
     await updateDoc(docRef, { state, ...data });
@@ -409,7 +401,7 @@ export const addAiOutput = async (
     };
     const updatedAiOutputs = [...aiOutputs, newAiOutput];
     setMockData({ aiOutputs: updatedAiOutputs });
-    return Promise.resolve(newId);
+    return newId;
   }
 
   const docRef = await addDoc(collection(db!, 'aiOutputs'), {

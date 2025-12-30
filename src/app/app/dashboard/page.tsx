@@ -34,25 +34,35 @@ export default function DashboardPage() {
     fetchAssignments();
   }, [fetchAssignments]);
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!assignmentToDelete || !user) return;
+    
+    const assignmentId = assignmentToDelete;
     setIsDeleting(true);
-    try {
-      await deleteAssignment(assignmentToDelete, user.uid);
-      toast({ title: 'Success', description: 'Assignment deleted successfully.' });
-      fetchAssignments();
-    } catch (error: any) {
-      console.error('Error deleting assignment:', error);
-      const description = error?.message ? String(error.message) : 'Could not delete the assignment. Check database security rules.';
-      toast({ 
-        variant: 'destructive', 
-        title: 'Deletion Failed', 
-        description: description
+
+    // Optimistic UI update
+    setAssignments(prev => prev.filter(a => a.id !== assignmentId));
+    setAssignmentToDelete(null);
+
+    deleteAssignment(assignmentId, user.uid)
+      .then(() => {
+        toast({ title: 'Success', description: 'Assignment deleted successfully.' });
+        // No need to re-fetch, UI is already updated
+      })
+      .catch((error: any) => {
+        console.error('Error deleting assignment:', error);
+        const description = error?.message ? String(error.message) : 'Could not delete the assignment. Check database security rules.';
+        toast({ 
+          variant: 'destructive', 
+          title: 'Deletion Failed', 
+          description: description
+        });
+        // Rollback UI change on error
+        fetchAssignments();
+      })
+      .finally(() => {
+        setIsDeleting(false);
       });
-    } finally {
-      setIsDeleting(false);
-      setAssignmentToDelete(null);
-    }
   };
 
   return (

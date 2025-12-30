@@ -77,19 +77,27 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
     fetchAssignmentData();
   }, [fetchAssignmentData]);
 
-  const handleDeleteSession = async () => {
+  const handleDeleteSession = () => {
     if (!sessionToDelete) return;
+    const sessionId = sessionToDelete;
     setIsDeleting(true);
-    try {
-      await deleteStudySession(sessionToDelete);
-      toast({ title: 'Success', description: 'Sprint has been deleted.' });
-      setSessionToDelete(null);
-      fetchAssignmentData(); // Refresh data
-    } catch (error) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Could not delete the sprint.' });
-    } finally {
-      setIsDeleting(false);
-    }
+    
+    // Optimistic UI update
+    setSessions(prev => prev.filter(s => s.id !== sessionId));
+    setSessionToDelete(null);
+
+    deleteStudySession(sessionId)
+      .then(() => {
+        toast({ title: 'Success', description: 'Sprint has been deleted.' });
+      })
+      .catch((error) => {
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not delete the sprint.' });
+        // Rollback on error
+        fetchAssignmentData(); 
+      })
+      .finally(() => {
+        setIsDeleting(false);
+      });
   };
 
   if (loading) {
