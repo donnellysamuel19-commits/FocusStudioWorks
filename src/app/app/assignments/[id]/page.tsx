@@ -37,6 +37,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import SprintClarification from '@/components/ai/SprintClarification';
 
 
 export default function AssignmentDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -53,22 +54,27 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
   const fetchAssignmentData = useCallback(() => {
     if (user && id) {
       setLoading(true);
-      Promise.all([
-        getAssignment(id),
-        getSessionsForAssignment(id, user.uid),
-      ]).then(([assignmentData, sessionsData]) => {
-        if (assignmentData && assignmentData.userId === user.uid) {
-            setAssignment(assignmentData);
-            setSessions(sessionsData);
-        } else {
-            setAssignment(null);
-            setSessions([]);
-            toast({ variant: 'destructive', title: 'Error', description: 'Assignment not found or you don\'t have permission.' });
-            router.push('/app/dashboard');
+      getAssignment(id)
+      .then((assignmentData) => {
+          if (assignmentData && assignmentData.userId === user.uid) {
+              setAssignment(assignmentData);
+              return getSessionsForAssignment(id, user.uid);
+          } else {
+              setAssignment(null);
+              setSessions([]);
+              toast({ variant: 'destructive', title: 'Error', description: 'Assignment not found or you don\'t have permission.' });
+              router.push('/app/dashboard');
+              return Promise.reject(new Error('Assignment not found or permission denied'));
+          }
+      })
+      .then((sessionsData) => {
+          setSessions(sessionsData);
+      })
+      .catch(err => {
+        if (err.message !== 'Assignment not found or permission denied') {
+            console.error(err);
+            toast({ variant: 'destructive', title: 'Error', description: 'Failed to load assignment data.' });
         }
-      }).catch(err => {
-        console.error(err);
-        toast({ variant: 'destructive', title: 'Error', description: 'Failed to load assignment data.' });
       }).finally(() => setLoading(false));
     }
   }, [user, id, toast, router]);
@@ -224,7 +230,12 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
         </CardHeader>
         <CardContent>
           {sessions.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">No study sprints recorded yet.</p>
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">No study sprints recorded yet.</p>
+              <div className="mt-6">
+                <SprintClarification assignment={assignment} sessions={sessions} />
+              </div>
+            </div>
           ) : (
             <div className="space-y-4">
               {sessions.map(session => (
@@ -236,7 +247,7 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
                         <div className="flex-1 min-w-0">
                             <p className='font-semibold truncate' title={session.targetObject}>{session.targetObject}</p>
                             <p className='text-sm text-muted-foreground'>
-                                {formatDistanceToNow(session.createdAt.toDate(), { addSuffix: true })} • {session.durationMinutes} min
+                                {session.createdAt ? `${formatDistanceToNow(session.createdAt.toDate(), { addSuffix: true })} • ` : ''}{session.durationMinutes} min
                             </p>
                         </div>
                     </div>
