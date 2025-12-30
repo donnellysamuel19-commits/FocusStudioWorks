@@ -189,7 +189,7 @@ export default function NewOrEditSprintPage({ params }: PageProps) {
                  <Button type="button" variant="ghost" onClick={() => router.back()}>Cancel</Button>
                 <Button type="submit" disabled={isLoading}>
                   {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {isEditMode ? 'Save Changes' : 'Start Sprint'}
+                  {isEditMode ? 'Save Changes' : 'Define Sprint'}
                 </Button>
               </div>
             </form>

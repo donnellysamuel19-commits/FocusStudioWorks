@@ -138,7 +138,7 @@ const setMockData = (data: { assignments?: AssignmentGoal[], sessions?: StudySes
 
 
 // --- AssignmentGoal Functions ---
-export const addAssignment = async (userId: string, title: string, optionalDeadline?: Date): Promise<string> => {
+export const addAssignment = async (userId: string, title: string, optionalDeadline?: Date): Promise<void> => {
   if (isDevBypass) {
     const { assignments } = getMockData();
     const newId = `dev-assignment-${Date.now()}`;
@@ -151,15 +151,14 @@ export const addAssignment = async (userId: string, title: string, optionalDeadl
     };
     const updatedAssignments = [...assignments, newAssignment];
     setMockData({ assignments: updatedAssignments });
-    return newId;
+    return;
   }
-  const docRef = await addDoc(collection(db!, 'assignmentGoals'), {
+  await addDoc(collection(db!, 'assignmentGoals'), {
     userId,
     title,
     optionalDeadline: optionalDeadline ? Timestamp.fromDate(optionalDeadline) : null,
     createdAt: serverTimestamp(),
   });
-  return docRef.id;
 };
 
 export const getAssignmentsForUser = async (userId: string): Promise<AssignmentGoal[]> => {
@@ -193,12 +192,13 @@ export const getAssignment = async (assignmentId: string): Promise<AssignmentGoa
   return docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } as AssignmentGoal : null;
 };
 
-export const deleteAssignment = async (assignmentId: string, userId: string): Promise<void> => {
+export const deleteAssignment = (assignmentId: string, userId: string): void => {
     if (isDevBypass) {
         let { assignments, sessions } = getMockData();
         const assignmentToDelete = assignments.find(a => a.id === assignmentId);
         if (!assignmentToDelete || assignmentToDelete.userId !== userId) {
-            throw new Error("Permission denied or assignment not found.");
+            console.error("Permission denied or assignment not found.");
+            return;
         }
         const updatedAssignments = assignments.filter(a => a.id !== assignmentId);
         const updatedSessions = sessions.filter(s => s.assignmentId !== assignmentId);
@@ -206,36 +206,37 @@ export const deleteAssignment = async (assignmentId: string, userId: string): Pr
         return;
     }
 
-    const batch = writeBatch(db!);
-    const assignmentRef = doc(db!, 'assignmentGoals', assignmentId);
+    const deletePromise = async () => {
+        const batch = writeBatch(db!);
+        const assignmentRef = doc(db!, 'assignmentGoals', assignmentId);
+    
+        const assignmentDoc = await getDoc(assignmentRef);
+        if (!assignmentDoc.exists() || assignmentDoc.data().userId !== userId) {
+            throw new Error('Permission denied or assignment not found.');
+        }
+    
+        batch.delete(assignmentRef);
+    
+        const sessionsQuery = query(
+            collection(db!, 'studySessions'),
+            where('assignmentId', '==', assignmentId),
+            where('userId', '==', userId)
+        );
+        const sessionsSnapshot = await getDocs(sessionsQuery);
+        sessionsSnapshot.forEach(sessionDoc => {
+            batch.delete(sessionDoc.ref);
+        });
+    
+        await batch.commit();
+    };
 
-    // First, verify the user owns the document.
-    const assignmentDoc = await getDoc(assignmentRef);
-    if (!assignmentDoc.exists() || assignmentDoc.data().userId !== userId) {
-        throw new Error('Permission denied or assignment not found.');
-    }
-
-    // Add the assignment deletion to the batch
-    batch.delete(assignmentRef);
-
-    // Find and delete all associated study sessions for that user
-    const sessionsQuery = query(
-        collection(db!, 'studySessions'),
-        where('assignmentId', '==', assignmentId),
-        where('userId', '==', userId) // This ensures we only query sessions belonging to the user
-    );
-    const sessionsSnapshot = await getDocs(sessionsQuery);
-    sessionsSnapshot.forEach(sessionDoc => {
-        batch.delete(sessionDoc.ref);
-    });
-
-    await batch.commit();
+    deletePromise().catch(console.error);
 };
 
 // --- StudySession Functions ---
 export type StudySessionInput = Omit<StudySession, 'id' | 'userId' | 'assignmentId' | 'state' | 'createdAt'>;
 
-export const addStudySession = async (userId: string, assignmentId: string, sessionData: StudySessionInput): Promise<string> => {
+export const addStudySession = async (userId: string, assignmentId: string, sessionData: StudySessionInput): Promise<string | undefined> => {
   if (isDevBypass) {
     const { sessions } = getMockData();
     const newId = `dev-session-${Date.now()}`;
