@@ -17,7 +17,7 @@ import {
 import { db } from './config';
 import type { AiOutput, AssignmentGoal, StudySession } from '@/types';
 
-const isDevBypass = process.env.NEXT_PUBLIC_DEV_AUTH_BYPASS === 'true';
+const isDevBypass = process.env.NEXT_PUBLIC_DEV_AUTH_BYPASS === 'false';
 
 // --- In-memory store for dev mode ---
 
