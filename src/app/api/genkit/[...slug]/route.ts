@@ -1,12 +1,5 @@
-import { genkit } from 'genkit';
-import { googleAI, gemini15Flash } from '@genkit-ai/googleai';
+import { ai } from '@/ai/genkit';
 import { NextRequest, NextResponse } from 'next/server';
-console.log("Checking API Key:", process.env.NEXT_PUBLIC_GOOGLE_GENAI_API_KEY ? "Found" : "MISSING!");
-
-const ai = genkit({
-  plugins: [googleAI({ apiKey: process.env.NEXT_PUBLIC_GOOGLE_GENAI_API_KEY })], // Uses Line 7 of .env.local
-  model: gemini15Flash,
-});
 
 export async function POST(req: NextRequest) {
   try {

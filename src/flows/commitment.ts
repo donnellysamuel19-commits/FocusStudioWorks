@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ai } from '../ai/genkit'; // This ensures we use the stable config you just fixed
+import { ai } from '../ai/genkit'; // This ensures we use the stable config
 
 export const commitmentClarificationFlow = ai.defineFlow(
   {
@@ -46,7 +46,6 @@ OR
 Keep it short.`;
 
     const llmResponse = await ai.generate({
-        model: 'googleai/gemini-1.5-flash',
         prompt,
         config: { temperature: 0.3 },
     });
