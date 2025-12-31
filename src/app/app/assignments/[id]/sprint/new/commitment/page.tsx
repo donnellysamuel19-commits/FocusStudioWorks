@@ -14,6 +14,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { logAnalyticsEvent } from '@/lib/analytics';
+import { runFlow } from '@genkit-ai/flow/client';
+import { commitmentClarificationFlow } from '@/ai/flows/commitment';
 
 export default function CommitmentConfirmationPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: assignmentId } = use(params);
@@ -75,35 +77,22 @@ export default function CommitmentConfirmationPage({ params }: { params: Promise
     setAiOutputSaved(false);
 
     try {
-      const response = await fetch('/api/genkit/commitmentClarificationFlow', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          data: {
-            assignmentId,
-            durationMinutes: session.durationMinutes,
-            targetObject: session.targetObject,
-            nextAction: session.nextAction,
-            sprintDeliverable: session.sprintDeliverable,
-          }
-        }),
+      const response = await runFlow(commitmentClarificationFlow, {
+        durationMinutes: session.durationMinutes,
+        targetObject: session.targetObject,
+        nextAction: session.nextAction,
+        sprintDeliverable: session.sprintDeliverable,
       });
 
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-
-      const aiResponse = await response.json();
-
-      setAiOriginal(aiResponse.result);
-      setAiHumanEdited(aiResponse.result);
+      setAiOriginal(response);
+      setAiHumanEdited(response);
     } catch (error) {
         console.error("AI clarification failed:", error);
         setAiError("AI unavailable — continue without it");
     } finally {
         setAiLoading(false);
     }
-  }, [user, session, assignmentId]);
+  }, [user, session]);
 
  const handleSaveAiOutput = async () => {
     if (!user || !aiOriginal || !aiHumanEdited) return;
