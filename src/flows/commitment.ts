@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ai } from '../ai/genkit'; // This ensures we use the stable config
+import { ai } from '../ai/genkit';
 
 export const commitmentClarificationFlow = ai.defineFlow(
   {
