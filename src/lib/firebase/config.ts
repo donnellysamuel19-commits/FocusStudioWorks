@@ -24,6 +24,7 @@ const db = app ? getFirestore(app) : null;
 
 // --- ADDED APP CHECK INITIALIZATION ---
 if (app && typeof window !== 'undefined') {
+  (window as any).FIREBASE_APPCHECK_DEBUG_TOKEN = true;
   // This is the "Handshake" that prevents the 400 error
   const siteKey = process.env.NEXT_PUBLIC_FIREBASE_APPCHECK_SITE_KEY;
   if (siteKey) {

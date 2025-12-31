@@ -55,29 +55,31 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
     setLoading(true);
 
     const maxAttempts = 5;
-    const delay = 400; // ms
+    const delay = 400; 
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-        const assignmentData = await getAssignment(id);
+        try {
+            const assignmentData = await getAssignment(id);
 
-        if (assignmentData && assignmentData.userId === user.uid) {
-            const sessionsData = await getSessionsForAssignment(id, user.uid);
-            setAssignment(assignmentData);
-            setSessions(sessionsData);
-            setLoading(false);
-            return; // Success, exit the function
+            if (assignmentData && assignmentData.userId === user.uid) {
+                const sessionsData = await getSessionsForAssignment(id, user.uid);
+                setAssignment(assignmentData);
+                setSessions(sessionsData);
+                setLoading(false);
+                return; 
+            }
+        } catch (err) {
+            console.error("Fetch attempt failed:", err);
         }
 
-        // If not found, wait before the next attempt
         if (attempt < maxAttempts) {
             await new Promise(resolve => setTimeout(resolve, delay * attempt));
         }
     }
 
-    // If all attempts fail
     toast({ variant: 'destructive', title: 'Error', description: "Assignment not found or you don't have permission." });
     router.push('/app/dashboard');
-    setLoading(false); // Make sure loading is turned off on failure too
+    setLoading(false);
 
 }, [user, id, toast, router]);
 
@@ -90,7 +92,6 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
     const sessionId = sessionToDelete;
     setIsDeleting(true);
     
-    // Optimistic UI update
     setSessions(prev => prev.filter(s => s.id !== sessionId));
     setSessionToDelete(null);
 
@@ -100,7 +101,6 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
       })
       .catch((error) => {
         toast({ variant: 'destructive', title: 'Error', description: 'Could not delete the sprint.' });
-        // Rollback on error
         fetchAssignmentData(); 
       })
       .finally(() => {
@@ -110,7 +110,7 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
 
   if (loading) {
     return (
-      <div className="container mx-auto">
+      <div className="container mx-auto p-6">
         <Skeleton className="h-10 w-3/4 mb-4" />
         <Skeleton className="h-6 w-1/2 mb-8" />
         <Card>
@@ -127,7 +127,7 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
   }
 
   if (!assignment) {
-    return null; // or a more specific "not found" component
+    return null; 
   }
 
   const getStatusIcon = (status: StudySession['state']) => {
@@ -177,13 +177,14 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
             <Badge variant={getStatusBadgeVariant(session.state)}>{session.state}</Badge>
           </div>
         </div>
-        {session.startTime && (
+        {/* FIX: Safe check for toDate() to prevent crash */}
+        {session.startTime?.toDate && (
            <div className="grid grid-cols-3 gap-2">
             <div className="text-muted-foreground col-span-1">Started</div>
             <p className="col-span-2">{format(session.startTime.toDate(), 'PPpp')}</p>
           </div>
         )}
-        {session.endTime && (
+        {session.endTime?.toDate && (
           <div className="grid grid-cols-3 gap-2">
             <div className="text-muted-foreground col-span-1">Ended</div>
             <p className="col-span-2">{format(session.endTime.toDate(), 'PPpp')}</p>
@@ -206,10 +207,11 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
   );
 
   return (
-    <div className="container mx-auto">
+    <div className="container mx-auto p-6">
       <div className="mb-8">
         <h1 className="text-3xl font-bold font-headline">{assignment.title}</h1>
-        {assignment.optionalDeadline && (
+        {/* FIX: Safe check for assignment deadlines */}
+        {assignment.optionalDeadline?.toDate && (
           <p className="text-muted-foreground flex items-center gap-2 mt-2">
             <Clock className="h-4 w-4" />
             Deadline: {format(assignment.optionalDeadline.toDate(), 'PPP')}
@@ -244,7 +246,8 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
                         <div className="flex-1 min-w-0">
                             <p className='font-semibold truncate' title={session.targetObject}>{session.targetObject}</p>
                             <p className='text-sm text-muted-foreground'>
-                                {session.createdAt ? `${formatDistanceToNow(session.createdAt.toDate(), { addSuffix: true })} • ` : ''}{session.durationMinutes} min
+                                {/* FIX: Safe check for session.createdAt before formatting */}
+                                {session.createdAt?.toDate ? `${formatDistanceToNow(session.createdAt.toDate(), { addSuffix: true })} • ` : ''}{session.durationMinutes} min
                             </p>
                         </div>
                     </div>

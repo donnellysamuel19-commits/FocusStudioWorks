@@ -17,9 +17,15 @@ import {
 import { db } from './config';
 import type { AiOutput, AssignmentGoal, StudySession } from '@/types';
 
-const isDevBypass = process.env.NEXT_PUBLIC_DEV_AUTH_BYPASS === 'false';
+const isDevBypass = process.env.NEXT_PUBLIC_DEV_AUTH_BYPASS === 'true';
 
 // --- In-memory store for dev mode ---
+const ensureDb = () => {
+    if (!db) {
+      throw new Error("Firebase Database is not initialized. Check your .env.local and config.ts.");
+    }
+    return db;
+  };
 
 const initialMockAssignments: AssignmentGoal[] = [
     {
@@ -139,28 +145,34 @@ const setMockData = (data: { assignments?: AssignmentGoal[], sessions?: StudySes
 
 // --- AssignmentGoal Functions ---
 export const addAssignment = async (userId: string, title: string, optionalDeadline?: Date): Promise<string> => {
-  if (isDevBypass) {
-    const { assignments } = getMockData();
-    const newId = `dev-assignment-${Date.now()}`;
-    const newAssignment: AssignmentGoal = { 
-        id: newId, 
-        userId, 
-        title, 
-        createdAt: Timestamp.now(),
-        ...(optionalDeadline && { optionalDeadline: Timestamp.fromDate(optionalDeadline) })
-    };
-    const updatedAssignments = [...assignments, newAssignment];
-    setMockData({ assignments: updatedAssignments });
-    return newId;
-  }
-  const docRef = await addDoc(collection(db!, 'assignmentGoals'), {
-    userId,
-    title,
-    optionalDeadline: optionalDeadline ? Timestamp.fromDate(optionalDeadline) : null,
-    createdAt: serverTimestamp(),
-  });
-  return docRef.id;
-};
+    if (isDevBypass) {
+      const { assignments } = getMockData();
+      const newId = `dev-assignment-${Date.now()}`;
+      const newAssignment: AssignmentGoal = { 
+          id: newId, 
+          userId, 
+          title, 
+          createdAt: Timestamp.now(),
+          ...(optionalDeadline && { optionalDeadline: Timestamp.fromDate(optionalDeadline) })
+      };
+      const updatedAssignments = [...assignments, newAssignment];
+      setMockData({ assignments: updatedAssignments });
+      return newId;
+    }
+  
+    // --- SAFETY CHECK ---
+    if (!db) {
+      throw new Error("Database not initialized. Ensure your .env.local keys are correct and App Check is configured.");
+    }
+  
+    const docRef = await addDoc(collection(db, 'assignmentGoals'), {
+      userId,
+      title,
+      optionalDeadline: optionalDeadline ? Timestamp.fromDate(optionalDeadline) : null,
+      createdAt: serverTimestamp(),
+    });
+    return docRef.id;
+  };
 
 export const getAssignmentsForUser = async (userId: string): Promise<AssignmentGoal[]> => {
   if (isDevBypass) {
@@ -170,7 +182,7 @@ export const getAssignmentsForUser = async (userId: string): Promise<AssignmentG
             .sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
   }
   
-  const q = query(collection(db!, 'assignmentGoals'), where('userId', '==', userId));
+  const q = query(collection(ensureDb(), 'assignmentGoals'), where('userId', '==', userId));
   const querySnapshot = await getDocs(q);
   const assignments = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AssignmentGoal));
 
@@ -188,7 +200,7 @@ export const getAssignment = async (assignmentId: string): Promise<AssignmentGoa
     const { assignments } = getMockData();
     return assignments.find(a => a.id === assignmentId) || null;
   }
-  const docRef = doc(db!, 'assignmentGoals', assignmentId);
+  const docRef = doc(ensureDb(), 'assignmentGoals', assignmentId);
   const docSnap = await getDoc(docRef);
   return docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } as AssignmentGoal : null;
 };
@@ -208,8 +220,8 @@ export const deleteAssignment = (assignmentId: string, userId: string): void => 
     }
 
     const deletePromise = async () => {
-        const batch = writeBatch(db!);
-        const assignmentRef = doc(db!, 'assignmentGoals', assignmentId);
+        const batch = writeBatch(ensureDb());
+        const assignmentRef = doc(ensureDb(), 'assignmentGoals', assignmentId);
     
         const assignmentDoc = await getDoc(assignmentRef);
         if (!assignmentDoc.exists() || assignmentDoc.data().userId !== userId) {
@@ -219,7 +231,7 @@ export const deleteAssignment = (assignmentId: string, userId: string): void => 
         batch.delete(assignmentRef);
     
         const sessionsQuery = query(
-            collection(db!, 'studySessions'),
+            collection(ensureDb(), 'studySessions'),
             where('assignmentId', '==', assignmentId),
             where('userId', '==', userId)
         );
@@ -253,7 +265,7 @@ export const addStudySession = async (userId: string, assignmentId: string, sess
     setMockData({ sessions: updatedSessions });
     return newId;
   }
-  const docRef = await addDoc(collection(db!, 'studySessions'), {
+  const docRef = await addDoc(collection(ensureDb(), 'studySessions'), {
     ...sessionData,
     userId,
     assignmentId,
@@ -273,7 +285,7 @@ export const updateStudySession = async (sessionId: string, data: Partial<StudyS
         }
         return;
     }
-    const docRef = doc(db!, 'studySessions', sessionId);
+    const docRef = doc(ensureDb(), 'studySessions', sessionId);
     await updateDoc(docRef, data);
 };
 
@@ -282,7 +294,7 @@ export const getStudySession = async (sessionId: string): Promise<StudySession |
     const { sessions } = getMockData();
     return sessions.find(s => s.id === sessionId) || null;
   }
-  const docRef = doc(db!, 'studySessions', sessionId);
+  const docRef = doc(ensureDb(), 'studySessions', sessionId);
   const docSnap = await getDoc(docRef);
   return docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } as StudySession : null;
 }
@@ -295,7 +307,7 @@ export const getSessionsForAssignment = async (assignmentId: string, userId: str
             .sort((a,b) => b.createdAt.toMillis() - a.createdAt.toMillis());
   }
   const q = query(
-    collection(db!, 'studySessions'), 
+    collection(ensureDb(), 'studySessions'), 
     where('assignmentId', '==', assignmentId),
     where('userId', '==', userId),
   );
@@ -319,7 +331,7 @@ export const getAllSessionsForUser = async (userId: string): Promise<StudySessio
                 .filter(s => s.userId === userId)
                 .sort((a,b) => b.createdAt.toMillis() - a.createdAt.toMillis());
     }
-    const q = query(collection(db!, 'studySessions'), where('userId', '==', userId));
+    const q = query(collection(ensureDb(), 'studySessions'), where('userId', '==', userId));
     const querySnapshot = await getDocs(q);
     const sessions = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StudySession));
     
@@ -347,7 +359,7 @@ export const deleteStudySession = async (sessionId: string): Promise<void> => {
         }
         throw new Error("Session not found.");
     }
-    const docRef = doc(db!, 'studySessions', sessionId);
+    const docRef = doc(ensureDb(), 'studySessions', sessionId);
     const docSnap = await getDoc(docRef);
     if (docSnap.exists() && docSnap.data().state === 'Pending') {
         await deleteDoc(docRef);
@@ -376,43 +388,48 @@ export const updateSessionState = async (sessionId: string, state: StudySession[
         }
         return;
     }
-    const docRef = doc(db!, 'studySessions', sessionId);
+    const docRef = doc(ensureDb(), 'studySessions', sessionId);
     await updateDoc(docRef, { state, ...data });
 };
 
 // --- AI Output Functions ---
 export const addAiOutput = async (
-  userId: string,
-  assignmentId: string,
-  ai_original: string,
-  human_edited: string
-): Promise<string> => {
-  const featureName = "feature1_commitment_clarification";
+    userId: string,
+    assignmentId: string,
+    ai_original: string,
+    human_edited: string
+  ): Promise<string> => {
+    const featureName = "feature1_commitment_clarification";
+    
+    if (isDevBypass) {
+      const { aiOutputs } = getMockData();
+      const newId = `dev-ai-output-${Date.now()}`;
+      const newAiOutput: AiOutput = {
+        id: newId,
+        userId,
+        assignmentId,
+        featureName,
+        ai_original,
+        human_edited,
+        createdAt: Timestamp.now(),
+      };
+      const updatedAiOutputs = [...aiOutputs, newAiOutput];
+      setMockData({ aiOutputs: updatedAiOutputs });
+      return newId;
+    }
   
-  if (isDevBypass) {
-    const { aiOutputs } = getMockData();
-    const newId = `dev-ai-output-${Date.now()}`;
-    const newAiOutput: AiOutput = {
-      id: newId,
+    // --- SAFETY CHECK ---
+    if (!db) {
+       throw new Error("AI storage failed: Database connection is missing (db is null).");
+    }
+  
+    const docRef = await addDoc(collection(db, 'aiOutputs'), {
       userId,
       assignmentId,
       featureName,
       ai_original,
       human_edited,
-      createdAt: Timestamp.now(),
-    };
-    const updatedAiOutputs = [...aiOutputs, newAiOutput];
-    setMockData({ aiOutputs: updatedAiOutputs });
-    return newId;
-  }
-
-  const docRef = await addDoc(collection(db!, 'aiOutputs'), {
-    userId,
-    assignmentId,
-    featureName,
-    ai_original,
-    human_edited,
-    createdAt: serverTimestamp(),
-  });
-  return docRef.id;
-};
+      createdAt: serverTimestamp(),
+    });
+    return docRef.id;
+  };
