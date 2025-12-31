@@ -84,8 +84,9 @@ export default function CommitmentConfirmationPage({ params }: { params: Promise
         sprintDeliverable: session.sprintDeliverable,
       });
 
-      setAiOriginal(response);
-      setAiHumanEdited(response);
+      const clarificationText = response.clarification;
+      setAiOriginal(clarificationText);
+      setAiHumanEdited(clarificationText);
     } catch (error) {
         console.error("AI clarification failed:", error);
         setAiError("AI unavailable — continue without it");

@@ -18,14 +18,17 @@ export const CommitmentClarificationInputSchema = z.object({
 });
 export type CommitmentClarificationInput = z.infer<typeof CommitmentClarificationInputSchema>;
 
-export const commitmentClarificationFlow = ai.defineFlow(
-  {
-    name: 'commitmentClarificationFlow',
-    inputSchema: CommitmentClarificationInputSchema,
-    outputSchema: z.string(),
-  },
-  async (sprintInput) => {
-    const prompt = `You are assisting a study sprint app called FocusSprint.
+export const CommitmentClarificationOutputSchema = z.object({
+  clarification: z.string().describe('Concise feedback on the user sprint commitment, under 120 words.')
+});
+export type CommitmentClarificationOutput = z.infer<typeof CommitmentClarificationOutputSchema>;
+
+
+const commitmentPrompt = ai.definePrompt({
+  name: 'commitmentClarificationPrompt',
+  input: { schema: CommitmentClarificationInputSchema },
+  output: { schema: CommitmentClarificationOutputSchema },
+  prompt: `You are assisting a study sprint app called FocusSprint.
 Your job is strictly bounded: you may ONLY identify if the “Next Action” section is too vague, or possibly too vigorous for the duration.
 
 Hard limits:
@@ -42,24 +45,31 @@ Style rules:
 - If the sprint input is already clear, explicitly say so and do NOT rewrite it.
 
 Sprint input:
-Duration: ${sprintInput.durationMinutes} minutes
-Target Object: ${sprintInput.targetObject}
-Next Action: ${sprintInput.nextAction}
-Sprint Deliverable: ${sprintInput.sprintDeliverable}
+Duration: {{{durationMinutes}}} minutes
+Target Object: {{{targetObject}}}
+Next Action: {{{nextAction}}}
+Sprint Deliverable: {{{sprintDeliverable}}}
 
-Output format:
-- 1–2 sentences identifying whether the prompt is too vague or too much of a workload (if anything).
-- Then EITHER:
-• 1–3 optional clarifying questions
-OR
-• one optional rewrite suggestion.
-Keep it short.`;
+Your output must be a JSON object with a single key "clarification". The value should be a string containing your feedback.
 
-    const llmResponse = await ai.generate({
-      prompt,
-      config: { temperature: 0.3 },
-    });
+Example Output:
+{
+  "clarification": "The next action seems clear and achievable for the time. Suggestion: 'Summarize notes' could be more specific, like 'Create 3 bullet points summarizing the key arguments'."
+}
+`
+});
 
-    return llmResponse.text;
+export const commitmentClarificationFlow = ai.defineFlow(
+  {
+    name: 'commitmentClarificationFlow',
+    inputSchema: CommitmentClarificationInputSchema,
+    outputSchema: CommitmentClarificationOutputSchema,
+  },
+  async (sprintInput) => {
+    const { output } = await commitmentPrompt(sprintInput);
+    if (!output) {
+      throw new Error('AI failed to generate a clarification.');
+    }
+    return output;
   }
 );
