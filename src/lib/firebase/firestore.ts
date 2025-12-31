@@ -138,7 +138,7 @@ const setMockData = (data: { assignments?: AssignmentGoal[], sessions?: StudySes
 
 
 // --- AssignmentGoal Functions ---
-export const addAssignment = async (userId: string, title: string, optionalDeadline?: Date): Promise<void> => {
+export const addAssignment = async (userId: string, title: string, optionalDeadline?: Date): Promise<string> => {
   if (isDevBypass) {
     const { assignments } = getMockData();
     const newId = `dev-assignment-${Date.now()}`;
@@ -151,14 +151,15 @@ export const addAssignment = async (userId: string, title: string, optionalDeadl
     };
     const updatedAssignments = [...assignments, newAssignment];
     setMockData({ assignments: updatedAssignments });
-    return;
+    return newId;
   }
-  await addDoc(collection(db!, 'assignmentGoals'), {
+  const docRef = await addDoc(collection(db!, 'assignmentGoals'), {
     userId,
     title,
     optionalDeadline: optionalDeadline ? Timestamp.fromDate(optionalDeadline) : null,
     createdAt: serverTimestamp(),
   });
+  return docRef.id;
 };
 
 export const getAssignmentsForUser = async (userId: string): Promise<AssignmentGoal[]> => {

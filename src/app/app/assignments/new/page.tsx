@@ -43,12 +43,11 @@ export default function NewAssignmentPage() {
     }
     setIsLoading(true);
     try {
-      addAssignment(user.uid, values.title, values.optionalDeadline);
+      const newAssignmentId = await addAssignment(user.uid, values.title, values.optionalDeadline);
       toast({ title: 'Success', description: 'Assignment created.' });
 
-      // Redirect to the dashboard page to see the new assignment
-      router.push(`/app/dashboard`);
-      router.refresh();
+      // Redirect to the new assignment's detail page
+      router.push(`/app/assignments/${newAssignmentId}`);
 
     } catch (error) {
       console.error("Failed to create assignment:", error);

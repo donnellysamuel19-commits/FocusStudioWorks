@@ -37,8 +37,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import SprintClarification from '@/components/ai/SprintClarification';
-
 
 export default function AssignmentDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -51,33 +49,37 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const fetchAssignmentData = useCallback(() => {
-    if (user && id) {
-      setLoading(true);
-      getAssignment(id)
-      .then((assignmentData) => {
-          if (assignmentData && assignmentData.userId === user.uid) {
-              setAssignment(assignmentData);
-              return getSessionsForAssignment(id, user.uid);
-          } else {
-              setAssignment(null);
-              setSessions([]);
-              toast({ variant: 'destructive', title: 'Error', description: 'Assignment not found or you don\'t have permission.' });
-              router.push('/app/dashboard');
-              return Promise.reject(new Error('Assignment not found or permission denied'));
-          }
-      })
-      .then((sessionsData) => {
-          setSessions(sessionsData);
-      })
-      .catch(err => {
-        if (err.message !== 'Assignment not found or permission denied') {
-            console.error(err);
-            toast({ variant: 'destructive', title: 'Error', description: 'Failed to load assignment data.' });
+  const fetchAssignmentData = useCallback(async () => {
+    if (!user || !id) return;
+
+    setLoading(true);
+
+    const maxAttempts = 5;
+    const delay = 400; // ms
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        const assignmentData = await getAssignment(id);
+
+        if (assignmentData && assignmentData.userId === user.uid) {
+            const sessionsData = await getSessionsForAssignment(id, user.uid);
+            setAssignment(assignmentData);
+            setSessions(sessionsData);
+            setLoading(false);
+            return; // Success, exit the function
         }
-      }).finally(() => setLoading(false));
+
+        // If not found, wait before the next attempt
+        if (attempt < maxAttempts) {
+            await new Promise(resolve => setTimeout(resolve, delay * attempt));
+        }
     }
-  }, [user, id, toast, router]);
+
+    // If all attempts fail
+    toast({ variant: 'destructive', title: 'Error', description: "Assignment not found or you don't have permission." });
+    router.push('/app/dashboard');
+    setLoading(false); // Make sure loading is turned off on failure too
+
+}, [user, id, toast, router]);
 
   useEffect(() => {
     fetchAssignmentData();
@@ -230,12 +232,7 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
         </CardHeader>
         <CardContent>
           {sessions.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-muted-foreground">No study sprints recorded yet.</p>
-              <div className="mt-6">
-                <SprintClarification assignment={assignment} sessions={sessions} />
-              </div>
-            </div>
+            <p className="text-muted-foreground text-center py-8">No study sprints recorded yet.</p>
           ) : (
             <div className="space-y-4">
               {sessions.map(session => (
