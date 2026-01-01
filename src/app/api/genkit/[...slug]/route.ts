@@ -1,12 +1,26 @@
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import { NextResponse } from "next/server";
 
-/**
- * @fileOverview A catch-all API route for handling Genkit flow requests from the client.
- * This route handler is essential for the Genkit Next.js plugin to work correctly.
- * It uses the `genkitNextHandler` to process incoming requests and route them to the appropriate Genkit flows.
- * All Genkit flows defined in the application will be exposed through this endpoint.
- */
+export async function POST(req: Request) {
+  try {
+    const { message } = await req.json();
+    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_GENAI_API_KEY;
 
-import { genkitNextHandler } from '@genkit-ai/next';
+    // This is the "Found" check we are looking for in your terminal
+    console.log("Checking API Key:", apiKey ? "Found" : "MISSING!");
 
-export const GET = genkitNextHandler();
-export const POST = genkitNextHandler();
+    if (!apiKey) {
+      return NextResponse.json({ error: "API Key missing" }, { status: 500 });
+    }
+
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const result = await model.generateContent(message);
+    const response = await result.response;
+    
+    return NextResponse.json({ text: response.text() });
+  } catch (error) {
+    console.error("API Error:", error);
+    return NextResponse.json({ error: "Failed to fetch AI" }, { status: 500 });
+  }
+}
