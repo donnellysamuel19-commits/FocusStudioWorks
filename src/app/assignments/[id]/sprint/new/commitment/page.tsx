@@ -54,7 +54,18 @@ export default function CommitmentConfirmationPage({ params }: { params: Promise
     if (!session || !sessionId) return;
     setIsStarting(true);
     try {
-      await updateSessionState(sessionId, 'Active', { startTime: serverTimestamp() as any });
+      const updateData: { 
+        startTime: any, 
+        aiSuggestion?: string | null, 
+        usedAiSuggestion?: boolean 
+      } = { startTime: serverTimestamp() as any };
+
+      if (aiOriginal) {
+        updateData.aiSuggestion = aiHumanEdited;
+        updateData.usedAiSuggestion = aiOutputSaved;
+      }
+
+      await updateSessionState(sessionId, 'Active', updateData);
       toast({ title: 'Sprint Started!', description: 'Time to focus.' });
       router.push(`/sprint/${sessionId}/active`);
     } catch (error) {
