@@ -14,7 +14,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { logAnalyticsEvent } from '@/lib/analytics';
-import { runFlow } from "@genkit-ai/next/client";
 
 export default function CommitmentConfirmationPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: assignmentId } = use(params);
@@ -23,10 +22,12 @@ export default function CommitmentConfirmationPage({ params }: { params: Promise
   const searchParams = useSearchParams();
   const sessionId = searchParams.get('sessionId');
   const { toast } = useToast();
+
   const [session, setSession] = useState<StudySession | null>(null);
   const [loading, setLoading] = useState(true);
   const [isStarting, setIsStarting] = useState(false);
 
+  // AI-related state
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [aiOriginal, setAiOriginal] = useState<string | null>(null);
@@ -36,7 +37,7 @@ export default function CommitmentConfirmationPage({ params }: { params: Promise
   useEffect(() => {
     if (user && sessionId) {
       getStudySession(sessionId)
-        .then(sessionData => {
+        .then((sessionData) => {
           if (sessionData && sessionData.userId === user.uid) {
             setSession(sessionData);
           } else {
@@ -64,35 +65,46 @@ export default function CommitmentConfirmationPage({ params }: { params: Promise
 
   const handleAiCheck = useCallback(async () => {
     if (!user || !session) return;
-  
+
     setAiLoading(true);
     setAiError(null);
     setAiOriginal(null);
     setAiHumanEdited(null);
-  
+
     try {
-      // 1. Prepare the input from your session state
-      const flowInput = {
+      // 1. Prepare the input from the session state
+      const body = {
         durationMinutes: (session as any).durationMinutes,
         targetObject: (session as any).targetObject,
         nextAction: (session as any).nextAction,
         sprintDeliverable: (session as any).sprintDeliverable,
       };
-  
-      // 2. // Call the Genkit flow via the /api/genkit bridge (same-origin)
-      const response = await runFlow({
-        url: "/api/commitmentClarificationFlow",
-        input: flowInput,
+
+      // 2. Call the API route directly
+      const res = await fetch('/api/commitmentClarificationFlow', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body), // IMPORTANT: no "data": {} wrapper
       });
-  
-      // 3. Update your UI with the result
-      const clarificationText = response?.clarification || "No clarification provided.";
+
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => null);
+        const msg =
+          errBody?.error?.message || `AI request failed with status ${res.status}`;
+        throw new Error(msg);
+      }
+
+      const data = await res.json();
+
+      // 3. Update UI with the clarification from the AI
+      const clarificationText =
+        (data && data.clarification) || 'No clarification provided.';
+
       setAiOriginal(clarificationText);
       setAiHumanEdited(clarificationText);
-      
     } catch (error) {
-      console.error("AI clarification failed:", error);
-      setAiError("AI unavailable — continue without it");
+      console.error('AI clarification failed:', error);
+      setAiError('AI unavailable — continue without it');
     } finally {
       setAiLoading(false);
     }
@@ -105,7 +117,7 @@ export default function CommitmentConfirmationPage({ params }: { params: Promise
       toast({ title: 'Success', description: 'AI clarification has been saved.' });
       setAiOutputSaved(true);
     } catch (error) {
-      console.error("Failed to save AI output:", error);
+      console.error('Failed to save AI output:', error);
       toast({ variant: 'destructive', title: 'Error', description: 'Could not save AI output.' });
     }
   };
@@ -122,13 +134,17 @@ export default function CommitmentConfirmationPage({ params }: { params: Promise
   if (loading) {
     return (
       <Card className="max-w-2xl mx-auto">
-        <CardHeader><Skeleton className="h-8 w-3/4" /></CardHeader>
+        <CardHeader>
+          <Skeleton className="h-8 w-3/4" />
+        </CardHeader>
         <CardContent className="space-y-6">
           <Skeleton className="h-20 w-full" />
           <Skeleton className="h-20 w-full" />
           <Skeleton className="h-20 w-full" />
         </CardContent>
-        <CardFooter><Skeleton className="h-10 w-32 ml-auto" /></CardFooter>
+        <CardFooter>
+          <Skeleton className="h-10 w-32 ml-auto" />
+        </CardFooter>
       </Card>
     );
   }
@@ -140,32 +156,55 @@ export default function CommitmentConfirmationPage({ params }: { params: Promise
       <Card>
         <CardHeader>
           <CardTitle className="text-2xl font-headline">Commitment Confirmation</CardTitle>
-          <CardDescription>You are about to start the following study sprint. Ready to focus?</CardDescription>
+          <CardDescription>
+            You are about to start the following study sprint. Ready to focus?
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="p-4 border rounded-lg">
-            <h3 className="font-semibold flex items-center gap-2"><Clock className="h-5 w-5 text-primary" /> Duration</h3>
+            <h3 className="font-semibold flex items-center gap-2">
+              <Clock className="h-5 w-5 text-primary" /> Duration
+            </h3>
             <p className="text-muted-foreground pl-7">{session.durationMinutes} minutes</p>
           </div>
           <div className="p-4 border rounded-lg">
-            <h3 className="font-semibold flex items-center gap-2"><Target className="h-5 w-5 text-primary" /> Next Action</h3>
+            <h3 className="font-semibold flex items-center gap-2">
+              <Target className="h-5 w-5 text-primary" /> Next Action
+            </h3>
             <p className="text-muted-foreground pl-7">{session.nextAction}</p>
           </div>
           <div className="p-4 border rounded-lg">
-            <h3 className="font-semibold flex items-center gap-2"><Rocket className="h-5 w-5 text-primary" /> Deliverable</h3>
+            <h3 className="font-semibold flex items-center gap-2">
+              <Rocket className="h-5 w-5 text-primary" /> Deliverable
+            </h3>
             <p className="text-muted-foreground pl-7">{session.sprintDeliverable}</p>
           </div>
 
+          {/* AI Assistant section */}
           <div className="space-y-4 pt-4 border-t">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold">AI Assistant</h3>
-              <Button variant="outline" size="sm" onClick={handleAiCheck} disabled={aiLoading}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleAiCheck}
+                disabled={aiLoading}
+              >
                 <Sparkles className="mr-2 h-4 w-4" />
                 {aiLoading ? 'Checking...' : 'AI Check (Optional)'}
               </Button>
             </div>
-            {aiError && <p className="text-sm text-destructive text-center">{aiError}</p>}
-            {aiLoading && <div className="flex justify-center"><Loader2 className="h-6 w-6 animate-spin" /></div>}
+
+            {aiError && (
+              <p className="text-sm text-destructive text-center">{aiError}</p>
+            )}
+
+            {aiLoading && (
+              <div className="flex justify-center">
+                <Loader2 className="h-6 w-6 animate-spin" />
+              </div>
+            )}
+
             {aiHumanEdited !== null && (
               <div className="space-y-2">
                 <Label htmlFor="ai-output">AI Clarification (Optional)</Label>
@@ -177,13 +216,25 @@ export default function CommitmentConfirmationPage({ params }: { params: Promise
                   rows={5}
                 />
                 <div className="flex items-center justify-end gap-2 pt-2">
-                  <Button variant="ghost" size="icon" onClick={() => handleFeedback('up')}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleFeedback('up')}
+                  >
                     <ThumbsUp className="h-4 w-4" />
                   </Button>
-                  <Button variant="ghost" size="icon" onClick={() => handleFeedback('down')}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleFeedback('down')}
+                  >
                     <ThumbsDown className="h-4 w-4" />
                   </Button>
-                  <Button size="sm" onClick={handleSaveAiOutput} disabled={aiOutputSaved || !aiHumanEdited.trim()}>
+                  <Button
+                    size="sm"
+                    onClick={handleSaveAiOutput}
+                    disabled={aiOutputSaved || !aiHumanEdited.trim()}
+                  >
                     {aiOutputSaved ? 'Saved' : 'Save'}
                   </Button>
                 </div>
@@ -192,7 +243,9 @@ export default function CommitmentConfirmationPage({ params }: { params: Promise
           </div>
         </CardContent>
         <CardFooter className="flex justify-end gap-2">
-          <Button variant="ghost" onClick={() => router.back()} disabled={isStarting}>Cancel</Button>
+          <Button variant="ghost" onClick={() => router.back()} disabled={isStarting}>
+            Cancel
+          </Button>
           <Button onClick={handleStartSprint} disabled={isStarting}>
             {isStarting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             <Check className="mr-2 h-4 w-4" /> Start Sprint
