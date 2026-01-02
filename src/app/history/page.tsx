@@ -1,23 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '@/lib/auth';
 import { getAssignmentsForUser, getAllSessionsForUser } from '@/lib/firebase/firestore';
 import type { AssignmentGoal, StudySession } from '@/types';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, XCircle } from 'lucide-react';
+import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
-import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 
 export default function HistoryPage() {
   const { user } = useAuth();
@@ -40,130 +30,66 @@ export default function HistoryPage() {
     }
   }, [user]);
 
-  if (loading) {
-    return (
-      <div className="container mx-auto">
-        <h1 className="text-3xl font-bold font-headline mb-8">Session History</h1>
-        <div className="space-y-4">
-          {[...Array(3)].map((_, i) => (
-            <Skeleton key={i} className="h-24 w-full" />
-          ))}
-        </div>
-      </div>
-    );
-  }
-  
-  const sessionsByAssignment = assignments.map(assignment => ({
-      ...assignment,
-      sessions: sessions.filter(s => s.assignmentId === assignment.id)
-  })).filter(a => a.sessions.length > 0);
+  const sessionsByAssignment = useMemo(() => {
+    return assignments
+      .map(assignment => ({
+        ...assignment,
+        sessions: sessions
+          .filter(s => s.assignmentId === assignment.id)
+          .sort((a, b) => (b.createdAt?.toDate().getTime() || 0) - (a.createdAt?.toDate().getTime() || 0)),
+      }))
+      .filter(a => a.sessions.length > 0)
+      .sort((a,b) => (b.createdAt?.toDate().getTime() || 0) - (a.createdAt?.toDate().getTime() || 0));
+  }, [assignments, sessions]);
 
-  const getStatusBadgeVariant = (status: StudySession['state']) => {
+  const getStatusBadge = (status: StudySession['state']) => {
     switch (status) {
-      case 'Completed': return 'default';
-      case 'Abandoned': return 'destructive';
-      default: return 'secondary';
+      case 'Completed': return <Badge className="bg-green-500/20 text-green-300 border-green-500/30">Completed</Badge>;
+      case 'Abandoned': return <Badge variant="destructive">Abandoned</Badge>;
+      default: return <Badge variant="secondary">{status}</Badge>;
     }
   };
 
-  const SessionDetailDialog = ({ session }: { session: StudySession }) => (
-    <DialogContent>
-      <DialogHeader>
-        <DialogTitle>Sprint Details</DialogTitle>
-        <DialogDescription>
-          A read-only view of your study sprint for "{session.targetObject}".
-        </DialogDescription>
-      </DialogHeader>
-      <div className="space-y-4 text-sm pt-4">
-        <div className="grid grid-cols-3 gap-2">
-          <p className="text-muted-foreground col-span-1">Duration</p>
-          <p className="col-span-2">{session.durationMinutes} minutes</p>
-        </div>
-         <div className="grid grid-cols-3 gap-2">
-          <p className="text-muted-foreground col-span-1">Next Action</p>
-          <p className="col-span-2">{session.nextAction}</p>
-        </div>
-         <div className="grid grid-cols-3 gap-2">
-          <p className="text-muted-foreground col-span-1">Deliverable</p>
-          <p className="col-span-2">{session.sprintDeliverable}</p>
-        </div>
-        <div className="grid grid-cols-3 gap-2">
-          <div className="text-muted-foreground col-span-1">Status</div>
-          <div className="col-span-2">
-            <Badge variant={getStatusBadgeVariant(session.state)}>{session.state}</Badge>
-          </div>
-        </div>
-        {session.startTime && (
-           <div className="grid grid-cols-3 gap-2">
-            <p className="text-muted-foreground col-span-1">Started</p>
-            <p className="col-span-2">{format(session.startTime.toDate(), 'PPpp')}</p>
-          </div>
-        )}
-        {session.endTime && (
-          <div className="grid grid-cols-3 gap-2">
-            <p className="text-muted-foreground col-span-1">Ended</p>
-            <p className="col-span-2">{format(session.endTime.toDate(), 'PPpp')}</p>
-          </div>
-        )}
-        {session.outcome && (
-          <div className="grid grid-cols-3 gap-2">
-            <p className="text-muted-foreground col-span-1">Outcome</p>
-            <p className="col-span-2">{session.outcome}</p>
-          </div>
-        )}
-        {session.optionalBlockerNote && (
-          <div className="grid grid-cols-3 gap-2">
-            <p className="text-muted-foreground col-span-1">Blocker Note</p>
-            <p className="col-span-2 text-destructive/80">{session.optionalBlockerNote}</p>
-          </div>
-        )}
-      </div>
-    </DialogContent>
-  );
+  if (loading) {
+    return <div className="flex justify-center items-center h-full"><Loader2 className="h-8 w-8 animate-spin" /></div>;
+  }
 
   return (
-    <div className="container mx-auto">
-      <h1 className="text-3xl font-bold font-headline mb-8">Session History</h1>
+    <div className="h-full text-white">
+      <h1 className="text-3xl font-bold mb-8">Session History</h1>
       
       {sessionsByAssignment.length === 0 ? (
-        <Card className="text-center py-12">
-           <CardHeader>
-            <CardTitle>No Completed Sprints</CardTitle>
-            <CardDescription>Your completed study sprints will appear here.</CardDescription>
-          </CardHeader>
-        </Card>
+        <div className="flex flex-col items-center justify-center h-full bg-gray-800 rounded-lg">
+            <p className="text-xl font-semibold">No History Found</p>
+            <p className="text-gray-400 mt-2">Your completed and abandoned sprints will appear here.</p>
+        </div>
       ) : (
-        <Accordion type="multiple" className="w-full space-y-4">
+        <Accordion type="multiple" defaultValue={sessionsByAssignment.map(a => a.id)} className="w-full space-y-4">
             {sessionsByAssignment.map(assignment => (
-                <AccordionItem key={assignment.id} value={assignment.id} className="border rounded-lg bg-card">
-                    <AccordionTrigger className="p-6 text-lg font-semibold hover:no-underline">
+                <AccordionItem key={assignment.id} value={assignment.id} className="bg-gray-800 border-none rounded-lg">
+                    <AccordionTrigger className="p-4 text-lg font-semibold hover:no-underline">
                        {assignment.title}
                     </AccordionTrigger>
-                    <AccordionContent className="p-6 pt-0">
-                        <div className="space-y-4">
+                    <AccordionContent className="px-4 pb-4">
+                        <div className="space-y-3">
                             {assignment.sessions.map(session => (
-                                <Dialog key={session.id}>
-                                  <DialogTrigger asChild>
-                                    <div className="border p-4 rounded-lg flex items-center justify-between cursor-pointer hover:bg-accent">
-                                        <div className='flex items-center gap-4'>
-                                            <div>
-                                                {session.state === 'Completed' ? <CheckCircle className="text-green-500" /> : <XCircle className="text-red-500" />}
-                                            </div>
-                                            <div>
-                                                <p className='font-semibold'>{session.targetObject}</p>
-                                                <p className='text-sm text-muted-foreground'>
-                                                    {format(session.createdAt.toDate(), 'PPP')} • {session.durationMinutes} min sprint
-                                                </p>
-                                                 {session.optionalBlockerNote && (
-                                                    <p className="text-xs text-destructive/80 mt-1 truncate">Blocker: {session.optionalBlockerNote}</p>
-                                                 )}
-                                            </div>
+                                <div key={session.id} className="bg-gray-900 p-4 rounded-lg flex items-center justify-between">
+                                    <div className='flex items-center gap-4'>
+                                        <div>
+                                            {session.state === 'Completed' ? <CheckCircle className="text-green-500" /> : <XCircle className="text-red-500" />}
                                         </div>
-                                        <Badge variant={getStatusBadgeVariant(session.state)}>{session.state}</Badge>
+                                        <div>
+                                            <p className='font-semibold'>{session.targetObject}</p>
+                                            <p className='text-sm text-gray-400'>
+                                                {session.createdAt ? format(session.createdAt.toDate(), 'MMMM do, yyyy') : ''} • {session.durationMinutes} min sprint
+                                            </p>
+                                             {session.state === 'Abandoned' && session.abandonReason && (
+                                                <p className="text-xs text-red-400 mt-1">Blocker: {session.abandonReason}</p>
+                                             )}
+                                        </div>
                                     </div>
-                                  </DialogTrigger>
-                                  <SessionDetailDialog session={session} />
-                                </Dialog>
+                                    {getStatusBadge(session.state)}
+                                </div>
                             ))}
                         </div>
                     </AccordionContent>
