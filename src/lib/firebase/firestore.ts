@@ -205,46 +205,45 @@ export const getAssignment = async (assignmentId: string): Promise<AssignmentGoa
   return docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } as AssignmentGoal : null;
 };
 
-export const deleteAssignment = (assignmentId: string, userId: string): void => {
+export const deleteAssignment = async (
+    assignmentId: string,
+    userId: string
+  ): Promise<void> => {
     if (isDevBypass) {
-        let { assignments, sessions } = getMockData();
-        const assignmentToDelete = assignments.find(a => a.id === assignmentId);
-        if (!assignmentToDelete || assignmentToDelete.userId !== userId) {
-            console.error("Permission denied or assignment not found.");
-            return;
-        }
-        const updatedAssignments = assignments.filter(a => a.id !== assignmentId);
-        const updatedSessions = sessions.filter(s => s.assignmentId !== assignmentId);
-        setMockData({ assignments: updatedAssignments, sessions: updatedSessions });
-        return;
+      let { assignments, sessions } = getMockData();
+      const assignmentToDelete = assignments.find(a => a.id === assignmentId);
+      if (!assignmentToDelete || assignmentToDelete.userId !== userId) {
+        throw new Error("Permission denied or assignment not found.");
+      }
+      setMockData({
+        assignments: assignments.filter(a => a.id !== assignmentId),
+        sessions: sessions.filter(s => s.assignmentId !== assignmentId),
+      });
+      return;
     }
-
-    const deletePromise = async () => {
-        const batch = writeBatch(ensureDb());
-        const assignmentRef = doc(ensureDb(), 'assignmentGoals', assignmentId);
-    
-        const assignmentDoc = await getDoc(assignmentRef);
-        if (!assignmentDoc.exists() || assignmentDoc.data().userId !== userId) {
-            throw new Error('Permission denied or assignment not found.');
-        }
-    
-        batch.delete(assignmentRef);
-    
-        const sessionsQuery = query(
-            collection(ensureDb(), 'studySessions'),
-            where('assignmentId', '==', assignmentId),
-            where('userId', '==', userId)
-        );
-        const sessionsSnapshot = await getDocs(sessionsQuery);
-        sessionsSnapshot.forEach(sessionDoc => {
-            batch.delete(sessionDoc.ref);
-        });
-    
-        await batch.commit();
-    };
-
-    deletePromise().catch(console.error);
-};
+  
+    const batch = writeBatch(ensureDb());
+    const assignmentRef = doc(ensureDb(), 'assignmentGoals', assignmentId);
+  
+    const assignmentDoc = await getDoc(assignmentRef);
+    if (!assignmentDoc.exists() || assignmentDoc.data().userId !== userId) {
+      throw new Error('Permission denied or assignment not found.');
+    }
+  
+    batch.delete(assignmentRef);
+  
+    const sessionsQuery = query(
+      collection(ensureDb(), 'studySessions'),
+      where('assignmentId', '==', assignmentId),
+      where('userId', '==', userId)
+    );
+  
+    const sessionsSnapshot = await getDocs(sessionsQuery);
+    sessionsSnapshot.forEach(sessionDoc => batch.delete(sessionDoc.ref));
+  
+    await batch.commit();
+  };
+  
 
 // --- StudySession Functions ---
 export type StudySessionInput = Omit<StudySession, 'id' | 'userId' | 'assignmentId' | 'state' | 'createdAt'>;

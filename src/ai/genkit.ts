@@ -1,7 +1,26 @@
-import {genkit} from 'genkit';
-import {googleAI} from '@genkit-ai/google-genai';
+import "server-only";
+import { genkit } from "genkit";
+import { googleAI } from "@genkit-ai/googleai";
+
+// registers flows (side effects)
+import "@/ai/flows";
+
+console.log(
+  "GENKIT ENV CHECK:",
+  "cwd=",
+  process.cwd(),
+  "GOOGLE_GENAI_API_KEY present?",
+  Boolean(process.env.GOOGLE_GENAI_API_KEY),
+  "len=",
+  process.env.GOOGLE_GENAI_API_KEY?.length ?? 0
+);
+
+const apiKey = process.env.GOOGLE_GENAI_API_KEY;
+if (!apiKey) {
+  throw new Error("Missing GOOGLE_GENAI_API_KEY");
+}
 
 export const ai = genkit({
-  plugins: [googleAI()],
-  model: 'googleai/gemini-1.5-flash',
+  plugins: [googleAI({ apiKey })],
+  model: "googleai/gemini-1.5-flash",
 });

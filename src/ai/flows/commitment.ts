@@ -8,6 +8,7 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 
+
 // Define the input schema for the commitment clarification flow.
 // This is NOT exported to avoid issues with Next.js server action serialization.
 const CommitmentClarificationInputSchema = z.object({
@@ -47,19 +48,36 @@ Analyze their commitment. Your feedback should:
 Provide only the feedback in the 'clarification' field of your response. Do not add any extra conversational text.`,
 });
 
-// Define the internal Genkit flow. This is not exported directly.
-const internalCommitmentFlow = ai.defineFlow(
+// Define and EXPORT the Genkit flow (needed for appRoute).
+export const internalCommitmentFlow = ai.defineFlow(
   {
     name: 'commitmentClarificationFlow',
     inputSchema: CommitmentClarificationInputSchema,
     outputSchema: CommitmentClarificationOutputSchema,
   },
   async (sprintInput) => {
-    const { output } = await commitmentPrompt(sprintInput);
-    if (!output) {
-      throw new Error('AI failed to generate a clarification.');
+    try {
+      console.log(
+        "Commitment flow input:",
+        JSON.stringify(sprintInput, null, 2)
+      );
+  
+      const { output } = await commitmentPrompt(sprintInput);
+  
+      console.log(
+        "Commitment flow raw output:",
+        JSON.stringify(output, null, 2)
+      );
+  
+      if (!output) {
+        throw new Error("AI returned no output");
+      }
+  
+      return output;
+    } catch (e) {
+      console.error("Commitment flow FAILED:", e);
+      throw e; // IMPORTANT: rethrow so the 500 propagates
     }
-    return output;
   }
 );
 
@@ -71,6 +89,4 @@ const internalCommitmentFlow = ai.defineFlow(
  * @param input The raw input from the client, expected to match CommitmentClarificationInputSchema.
  * @returns The output from the Genkit flow, which will match CommitmentClarificationOutputSchema.
  */
-export async function commitmentClarificationFlow(input: z.infer<typeof CommitmentClarificationInputSchema>): Promise<z.infer<typeof CommitmentClarificationOutputSchema>> {
-  return await internalCommitmentFlow(input);
-}
+

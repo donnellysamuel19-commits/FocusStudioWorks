@@ -78,7 +78,7 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
     }
 
     toast({ variant: 'destructive', title: 'Error', description: "Assignment not found or you don't have permission." });
-    router.push('/app/dashboard');
+    router.push('/dashboard');
     setLoading(false);
 
 }, [user, id, toast, router]);
@@ -226,7 +226,7 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
                 <CardDescription>A history of all your study sprints for this assignment.</CardDescription>
             </div>
           <Button asChild>
-            <Link href={`/app/assignments/${assignment.id}/sprint/new`}>
+            <Link href={`/assignments/${assignment.id}/sprint/new`}>
               <PlusCircle className="mr-2 h-4 w-4" />
               New Sprint
             </Link>
@@ -254,7 +254,7 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
                     <div className="flex items-center gap-2">
                         {session.state === 'Pending' && (
                              <Button asChild size="sm">
-                                <Link href={`/app/sprint/${session.id}`}>
+                                <Link href={`/sprint/${session.id}`}>
                                     <PlayCircle className="mr-2 h-4 w-4"/>
                                     Start
                                 </Link>
@@ -262,7 +262,7 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
                         )}
                         {session.state === 'Active' && (
                              <Button asChild size="sm" variant="secondary">
-                                <Link href={`/app/sprint/${session.id}/active`}>
+                                <Link href={`/sprint/${session.id}/active`}>
                                     <PlayCircle className="mr-2 h-4 w-4"/>
                                     Resume
                                 </Link>
@@ -285,7 +285,7 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
                                 </DialogTrigger>
                                 {session.state === 'Pending' && (
                                   <>
-                                    <DropdownMenuItem onSelect={() => router.push(`/app/assignments/${assignment.id}/sprint/edit/${session.id}`)}>
+                                    <DropdownMenuItem onSelect={() => router.push(`/assignments/${assignment.id}/sprint/edit/${session.id}`)}>
                                       <Edit className="mr-2 h-4 w-4" />
                                       <span>Edit</span>
                                     </DropdownMenuItem>

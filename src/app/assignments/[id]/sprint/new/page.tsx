@@ -63,7 +63,7 @@ export default function NewOrEditSprintPage({ params }: PageProps) {
           });
         } else {
            toast({ variant: "destructive", title: "Error", description: "Sprint not found." });
-           router.push(`/app/assignments/${assignmentId}`);
+           router.push(`/assignments/${assignmentId}`);
         }
       }).finally(() => setPageLoading(false));
     } else {
@@ -87,12 +87,12 @@ export default function NewOrEditSprintPage({ params }: PageProps) {
       if (isEditMode && sessionId) {
         await updateStudySession(sessionId, sessionData);
         toast({ title: 'Sprint Updated', description: 'Your changes have been saved.' });
-        router.push(`/app/assignments/${assignmentId}`);
+        router.push(`/assignments/${assignmentId}`);
         router.refresh();
       } else {
         const newSprintId = await addStudySession(user.uid, assignmentId, sessionData);
         toast({ title: 'Sprint Defined', description: 'Confirm your commitment.' });
-        router.push(`/app/assignments/${assignmentId}/sprint/new/commitment?sessionId=${newSprintId}`);
+        router.push(`/assignments/${assignmentId}/sprint/new/commitment?sessionId=${newSprintId}`);
       }
     } catch (error) {
       console.error(error);

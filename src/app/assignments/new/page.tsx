@@ -47,7 +47,7 @@ export default function NewAssignmentPage() {
       toast({ title: 'Success', description: 'Assignment created.' });
 
       // Redirect to the new assignment's detail page
-      router.push(`/app/assignments/${newAssignmentId}`);
+      router.push(`/assignments/${newAssignmentId}`);
 
     } catch (error) {
       console.error("Failed to create assignment:", error);
