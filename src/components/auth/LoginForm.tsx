@@ -42,7 +42,7 @@ export function LoginForm() {
             description: 'Cannot log in while in developer bypass mode.',
         });
         setIsLoading(false);
-        router.push('/app/dashboard');
+        router.push('/dashboard');
         return;
     }
     try {
@@ -51,7 +51,7 @@ export function LoginForm() {
         title: 'Success',
         description: 'Logged in successfully.',
       });
-      router.push('/app/dashboard');
+      router.push('/dashboard');
     } catch (error: any) {
       toast({
         variant: 'destructive',
