@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
+import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
 import { getAssignmentsForUser, getAllSessionsForUser } from '@/lib/firebase/firestore';
 import type { AssignmentGoal, StudySession } from '@/types';
@@ -73,23 +74,25 @@ export default function HistoryPage() {
                     <AccordionContent className="px-4 pb-4">
                         <div className="space-y-3">
                             {assignment.sessions.map(session => (
-                                <div key={session.id} className="bg-gray-900 p-4 rounded-lg flex items-center justify-between">
-                                    <div className='flex items-center gap-4'>
-                                        <div>
-                                            {session.state === 'Completed' ? <CheckCircle className="text-green-500" /> : <XCircle className="text-red-500" />}
+                                <Link key={session.id} href={`/sprint/${session.id}/details`}>
+                                    <div className="bg-gray-900 p-4 rounded-lg flex items-center justify-between cursor-pointer hover:bg-gray-800/60">
+                                        <div className='flex items-center gap-4'>
+                                            <div>
+                                                {session.state === 'Completed' ? <CheckCircle className="text-green-500" /> : <XCircle className="text-red-500" />}
+                                            </div>
+                                            <div>
+                                                <p className='font-semibold'>{session.targetObject}</p>
+                                                <p className='text-sm text-gray-400'>
+                                                    {session.createdAt ? format(session.createdAt.toDate(), 'MMMM do, yyyy') : ''} • {session.durationMinutes} min sprint
+                                                </p>
+                                                 {session.state === 'Abandoned' && session.abandonReason && (
+                                                    <p className="text-xs text-red-400 mt-1">Blocker: {session.abandonReason}</p>
+                                                 )}
+                                            </div>
                                         </div>
-                                        <div>
-                                            <p className='font-semibold'>{session.targetObject}</p>
-                                            <p className='text-sm text-gray-400'>
-                                                {session.createdAt ? format(session.createdAt.toDate(), 'MMMM do, yyyy') : ''} • {session.durationMinutes} min sprint
-                                            </p>
-                                             {session.state === 'Abandoned' && session.abandonReason && (
-                                                <p className="text-xs text-red-400 mt-1">Blocker: {session.abandonReason}</p>
-                                             )}
-                                        </div>
+                                        {getStatusBadge(session.state)}
                                     </div>
-                                    {getStatusBadge(session.state)}
-                                </div>
+                                </Link>
                             ))}
                         </div>
                     </AccordionContent>
