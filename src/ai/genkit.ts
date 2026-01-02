@@ -2,9 +2,6 @@ import "server-only";
 import { genkit } from "genkit";
 import { googleAI } from "@genkit-ai/googleai";
 
-// registers flows (side effects)
-import "@/ai/flows";
-
 console.log(
   "GENKIT ENV CHECK:",
   "cwd=",
@@ -22,5 +19,6 @@ if (!apiKey) {
 
 export const ai = genkit({
   plugins: [googleAI({ apiKey })],
-  model: "googleai/gemini-1.5-flash",
+  model: "googleai/gemini-2.5-flash",
 });
+

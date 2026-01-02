@@ -42,7 +42,7 @@ export function SignupForm() {
             description: 'Cannot sign up while in developer bypass mode.',
         });
         setIsLoading(false);
-        router.push('/app/dashboard');
+        router.push('/dashboard');
         return;
     }
     try {
@@ -51,7 +51,7 @@ export function SignupForm() {
         title: 'Account Created',
         description: "You've been successfully signed up.",
       });
-      router.push('/app/dashboard');
+      router.push('/dashboard');
     } catch (error: any) {
       toast({
         variant: 'destructive',

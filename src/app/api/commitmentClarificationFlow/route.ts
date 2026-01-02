@@ -1,21 +1,21 @@
-import { NextRequest, NextResponse } from "next/server";
-import { appRoute } from "@genkit-ai/next";
+import { NextResponse } from "next/server";
 import { internalCommitmentFlow } from "@/ai/flows/commitment";
-
-console.log(">>> route.ts module loaded");
 
 export const runtime = "nodejs";
 
-const handler = appRoute(internalCommitmentFlow);
-
-export async function POST(req: NextRequest) {
-  console.log(">>> HIT /api/commitmentClarificationFlow");
+export async function POST(req: Request) {
   try {
-    return await handler(req);
+    const body = await req.json();
+
+    // runFlow() (client) wraps as { data: input } — unwrap it
+    const flowInput = body?.data ?? body;
+
+    const result = await internalCommitmentFlow(flowInput);
+    return NextResponse.json(result);
   } catch (e: any) {
-    console.error(">>> route.ts ERROR:", e);
+    // Keep response simple in dev; remove stack later if you prefer
     return NextResponse.json(
-      { error: { message: e?.message ?? String(e), stack: e?.stack } },
+      { error: { message: e?.message || String(e), name: e?.name } },
       { status: 500 }
     );
   }

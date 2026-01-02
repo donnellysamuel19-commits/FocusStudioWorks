@@ -62,7 +62,9 @@ export const internalCommitmentFlow = ai.defineFlow(
         JSON.stringify(sprintInput, null, 2)
       );
   
+      console.log("Commitment flow: calling commitmentPrompt...");
       const { output } = await commitmentPrompt(sprintInput);
+      console.log("Commitment flow: commitmentPrompt returned");
   
       console.log(
         "Commitment flow raw output:",
@@ -74,10 +76,15 @@ export const internalCommitmentFlow = ai.defineFlow(
       }
   
       return output;
-    } catch (e) {
-      console.error("Commitment flow FAILED:", e);
-      throw e; // IMPORTANT: rethrow so the 500 propagates
+    } catch (e: any) {
+      console.error("Commitment flow FAILED message:", e?.message || e);
+      console.error("Commitment flow FAILED stack:", e?.stack || "(no stack)");
+      console.error("Env has GOOGLE_GENAI_API_KEY:", Boolean(process.env.GOOGLE_GENAI_API_KEY));
+      console.error("Env has NEXT_PUBLIC_GOOGLE_GENAI_API_KEY:", Boolean(process.env.NEXT_PUBLIC_GOOGLE_GENAI_API_KEY));
+      console.error("Env has FIREBASE_SERVICE_ACCOUNT_KEY:", Boolean(process.env.FIREBASE_SERVICE_ACCOUNT_KEY));
+      throw e;
     }
+    
   }
 );
 
