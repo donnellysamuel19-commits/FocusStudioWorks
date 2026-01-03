@@ -1,20 +1,23 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
+import { onAuthStateChanged, User as FirebaseUser, signOut as firebaseSignOut } from 'firebase/auth';
 import { auth } from './firebase/config';
 import type { User } from '@/types';
+import { useRouter } from 'next/navigation';
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   isDevBypass: boolean;
+  signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
   isDevBypass: false,
+  signOut: async () => {},
 });
 
 const devUser: User = {
@@ -26,8 +29,23 @@ const devUser: User = {
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   const isDevBypass = process.env.NEXT_PUBLIC_DEV_AUTH_BYPASS === 'true';
+
+  const signOut = async () => {
+    if (isDevBypass) {
+      setUser(null);
+      router.push('/');
+      return;
+    }
+
+    if (auth) {
+      await firebaseSignOut(auth);
+      setUser(null);
+      router.push('/');
+    }
+  };
 
   useEffect(() => {
     if (isDevBypass) {
@@ -59,7 +77,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [isDevBypass]);
 
   return (
-    <AuthContext.Provider value={{ user, loading, isDevBypass }}>
+    <AuthContext.Provider value={{ user, loading, isDevBypass, signOut }}>
       {children}
     </AuthContext.Provider>
   );
