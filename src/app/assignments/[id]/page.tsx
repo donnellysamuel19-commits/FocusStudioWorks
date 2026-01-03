@@ -35,7 +35,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 
 export default function AssignmentDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -48,6 +47,7 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
   const [loading, setLoading] = useState(true);
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [detailedSession, setDetailedSession] = useState<StudySession | null>(null);
 
   const fetchAssignmentData = useCallback(async () => {
     if (!user || !id) return;
@@ -177,7 +177,6 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
             <Badge variant={getStatusBadgeVariant(session.state)}>{session.state}</Badge>
           </div>
         </div>
-        {/* FIX: Safe check for toDate() to prevent crash */}
         {session.startTime?.toDate && (
            <div className="grid grid-cols-3 gap-2">
             <div className="text-muted-foreground col-span-1">Started</div>
@@ -210,7 +209,6 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
     <div className="container mx-auto p-6">
       <div className="mb-8">
         <h1 className="text-3xl font-bold font-headline">{assignment.title}</h1>
-        {/* FIX: Safe check for assignment deadlines */}
         {assignment.optionalDeadline?.toDate && (
           <p className="text-muted-foreground flex items-center gap-2 mt-2">
             <Clock className="h-4 w-4" />
@@ -246,7 +244,6 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
                         <div className="flex-1 min-w-0">
                             <p className='font-semibold truncate' title={session.targetObject}>{session.targetObject}</p>
                             <p className='text-sm text-muted-foreground'>
-                                {/* FIX: Safe check for session.createdAt before formatting */}
                                 {session.createdAt?.toDate ? `${formatDistanceToNow(session.createdAt.toDate(), { addSuffix: true })} • ` : ''}{session.durationMinutes} min
                             </p>
                         </div>
@@ -269,36 +266,31 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
                             </Button>
                         )}
 
-                        <Dialog>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8">
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                <DialogTrigger asChild>
-                                  <DropdownMenuItem>
-                                    <Info className="mr-2 h-4 w-4" />
-                                    <span>Details</span>
+                        <DropdownMenu modal={false}>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                              <DropdownMenuItem onSelect={() => setDetailedSession(session)}>
+                                <Info className="mr-2 h-4 w-4" />
+                                <span>Details</span>
+                              </DropdownMenuItem>
+                              {session.state === 'Pending' && (
+                                <>
+                                  <DropdownMenuItem onSelect={() => router.push(`/assignments/${assignment.id}/sprint/edit/${session.id}`)}>
+                                    <Edit className="mr-2 h-4 w-4" />
+                                    <span>Edit</span>
                                   </DropdownMenuItem>
-                                </DialogTrigger>
-                                {session.state === 'Pending' && (
-                                  <>
-                                    <DropdownMenuItem onSelect={() => router.push(`/assignments/${assignment.id}/sprint/edit/${session.id}`)}>
-                                      <Edit className="mr-2 h-4 w-4" />
-                                      <span>Edit</span>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem className="text-red-600" onSelect={() => setSessionToDelete(session.id)}>
-                                      <Trash2 className="mr-2 h-4 w-4" />
-                                      <span>Delete</span>
-                                    </DropdownMenuItem>
-                                  </>
-                                )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                          <SessionDetailDialog session={session} />
-                        </Dialog>
+                                  <DropdownMenuItem className="text-red-600" onSelect={() => setSessionToDelete(session.id)}>
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    <span>Delete</span>
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                     </div>
                 </div>
               ))}
@@ -323,6 +315,10 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
             </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={!!detailedSession} onOpenChange={(open) => !open && setDetailedSession(null)}>
+        {detailedSession && <SessionDetailDialog session={detailedSession} />}
+      </Dialog>
 
     </div>
   );
