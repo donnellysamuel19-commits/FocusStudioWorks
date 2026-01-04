@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Rocket, LayoutDashboard, History, User, LogOut } from 'lucide-react';
+import { Brain, LayoutDashboard, History, User, LogOut } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { useState } from 'react';
 
@@ -17,10 +17,10 @@ export function Sidebar() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   return (
-    <aside className="w-64 flex-shrink-0 bg-gray-900 text-white flex flex-col">
+    <aside className="w-48 flex-shrink-0 bg-gray-900 text-white flex flex-col">
       <div className="h-16 flex items-center justify-center px-4 border-b border-gray-800">
-        <Rocket className="h-6 w-6 mr-2" />
-        <h1 className="text-xl font-bold">FocusSprint</h1>
+        <Brain className="h-6 w-6 mr-2" />
+        <h1 className="text-lg font-bold">FocusSprint</h1>
       </div>
       <nav className="flex-1 px-4 py-4">
         <ul>

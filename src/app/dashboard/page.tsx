@@ -102,7 +102,7 @@ export default function DashboardPage() {
       {loading ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {[...Array(3)].map((_, i) => (
-            <Card key={i} className="animate-pulse">
+            <Card key={i} className="animate-pulse bg-gray-50 border-2 border-sidebar-primary">
               <CardHeader>
                 <div className="h-6 w-3/4 bg-muted rounded"></div>
               </CardHeader>
@@ -116,7 +116,7 @@ export default function DashboardPage() {
           ))}
         </div>
       ) : assignments.length === 0 ? (
-        <Card className="text-center py-12">
+        <Card className="text-center py-12 bg-gray-50 border-2 border-sidebar-primary">
           <CardHeader>
             <div className="mx-auto bg-secondary rounded-full p-3 w-fit">
               <BookOpen className="h-12 w-12 text-muted-foreground" />
@@ -147,7 +147,7 @@ export default function DashboardPage() {
                   : null;
 
             return (
-              <Card key={assignment.id} className="flex flex-col">
+              <Card key={assignment.id} className="flex flex-col bg-gray-50 border-2 border-sidebar-primary">
                 <CardHeader className="relative">
                   <CardTitle>{assignment.title}</CardTitle>
 

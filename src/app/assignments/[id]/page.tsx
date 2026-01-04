@@ -132,10 +132,10 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
 
   const getStatusIcon = (status: StudySession['state']) => {
     switch(status) {
-        case 'Completed': return <CheckCircle className="text-green-500" />;
-        case 'Abandoned': return <XCircle className="text-red-500" />;
-        case 'Active': return <PlayCircle className="text-blue-500 animate-pulse" />;
-        case 'Pending': return <Hourglass className="text-yellow-500" />;
+        case 'Completed': return <CheckCircle className="text-green-400" />;
+        case 'Abandoned': return <XCircle className="text-red-400" />;
+        case 'Active': return <PlayCircle className="text-blue-400 animate-pulse" />;
+        case 'Pending': return <Hourglass className="text-yellow-400" />;
         default: return null;
     }
   }
@@ -208,7 +208,8 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
   return (
     <div className="container mx-auto p-6">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold font-headline">{assignment.title}</h1>
+        <h1 className="text-2xl font-bold font-headline mb-4">Assignment Details</h1>
+        <h2 className="text-3xl font-bold font-headline">{assignment.title}</h2>
         {assignment.optionalDeadline?.toDate && (
           <p className="text-muted-foreground flex items-center gap-2 mt-2">
             <Clock className="h-4 w-4" />
@@ -236,7 +237,7 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
           ) : (
             <div className="space-y-4">
               {sessions.map(session => (
-                <div key={session.id} className="border p-4 rounded-lg flex items-center justify-between gap-4">
+                <div key={session.id} className="border p-4 rounded-lg flex items-center justify-between gap-4 bg-card text-card-foreground">
                     <div className='flex items-center gap-4 flex-1 min-w-0'>
                         <div className='hidden sm:block'>
                            {getStatusIcon(session.state)}
