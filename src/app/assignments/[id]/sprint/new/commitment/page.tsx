@@ -168,7 +168,7 @@ export default function CommitmentConfirmationPage({ params }: { params: Promise
         <CardHeader>
           <CardTitle className="text-2xl font-headline">Commitment Confirmation</CardTitle>
           <CardDescription>
-            You are about to start the following study sprint. Ready to focus?
+            You are about to start the following study sprint. <span className="text-lg underline">Ready to focus?</span>
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -194,7 +194,12 @@ export default function CommitmentConfirmationPage({ params }: { params: Promise
           {/* AI Assistant section */}
           <div className="space-y-4 pt-4 border-t">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">AI Assistant</h3>
+              <div>
+                <h3 className="text-lg font-semibold">AI Assistant</h3>
+                <p className="text-xs text-muted-foreground">
+                  The AI can provide feedback to refine your study commitments.
+                </p>
+              </div>
               <Button
                 variant="outline"
                 size="sm"
