@@ -102,7 +102,7 @@ export default function SprintTimerPage({ params }: { params: Promise<{ sessionI
 
         <AlertDialog>
         <AlertDialogTrigger asChild>
-            <Button variant="destructive" size="lg" className="bg-red-600 hover:bg-red-700 text-white font-bold text-lg">Abandon Sprint</Button>
+            <Button variant="destructive" size="lg" className="bg-red-600 hover:bg-red-700 text-white text-lg">Abandon Sprint</Button>
         </AlertDialogTrigger>
         <AlertDialogContent className="bg-gray-800 text-white border-gray-700">
             <AlertDialogHeader>
