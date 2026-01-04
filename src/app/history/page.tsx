@@ -75,7 +75,7 @@ export default function HistoryPage() {
                         <div className="space-y-3">
                             {assignment.sessions.map(session => (
                                 <Link key={session.id} href={`/sprint/${session.id}/details`}>
-                                    <div className="bg-gray-900 p-4 rounded-lg flex items-center justify-between cursor-pointer hover:bg-gray-800/60">
+                                    <div className="bg-gray-900 p-4 rounded-lg flex items-center justify-between cursor-pointer hover:bg-gray-800/60 border border-gray-700/60">
                                         <div className='flex items-center gap-4'>
                                             <div>
                                                 {session.state === 'Completed' ? <CheckCircle className="text-green-500" /> : <XCircle className="text-red-500" />}

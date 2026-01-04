@@ -117,7 +117,7 @@ export default function SprintTimerPage({ params }: { params: Promise<{ sessionI
             </div>
             <AlertDialogFooter>
             <AlertDialogCancel className="bg-gray-700 hover:bg-gray-600">Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleAbandonSprint} className="bg-red-600 hover:bg-red-700">Abandon</AlertDialogAction>
+            <AlertDialogAction onClick={handleAbandonSprint} className="bg-red-600 hover:bg-red-700 text-white">Abandon</AlertDialogAction>
             </AlertDialogFooter>
         </AlertDialogContent>
         </AlertDialog>
