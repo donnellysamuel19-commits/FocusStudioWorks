@@ -13,6 +13,7 @@ import {
   Timestamp,
   deleteDoc,
   writeBatch,
+  limit,
 } from 'firebase/firestore';
 import { db } from './config';
 import type { AiOutput, AssignmentGoal, StudySession } from '@/types';
@@ -298,6 +299,27 @@ export const getStudySession = async (sessionId: string): Promise<StudySession |
   return docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } as StudySession : null;
 }
 
+export const getStudySessionsForAssignment = async (userId: string, assignmentId: string, slimit: number): Promise<StudySession[]> => {
+  if (isDevBypass) {
+    const { sessions } = getMockData();
+    return sessions
+            .filter(s => s.assignmentId === assignmentId && s.userId === userId)
+            .sort((a,b) => b.createdAt.toMillis() - a.createdAt.toMillis())
+            .slice(0, slimit);
+  }
+  const q = query(
+    collection(ensureDb(), 'studySessions'), 
+    where('assignmentId', '==', assignmentId),
+    where('userId', '==', userId),
+    orderBy('createdAt', 'desc'),
+    limit(slimit)
+  );
+  const querySnapshot = await getDocs(q);
+  const sessions = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StudySession));
+
+  return sessions;
+};
+
 export const getSessionsForAssignment = async (assignmentId: string, userId: string): Promise<StudySession[]> => {
   if (isDevBypass) {
     const { sessions } = getMockData();
@@ -392,6 +414,59 @@ export const updateSessionState = async (sessionId: string, state: StudySession[
 };
 
 // --- AI Output Functions ---
+export const saveAIOutput = async (output: Omit<AiOutput, 'id'>): Promise<string> => {
+  if (isDevBypass) {
+    const { aiOutputs } = getMockData();
+    const newId = `dev-ai-output-${Date.now()}`;
+    const newAiOutput: AiOutput = {
+      id: newId,
+      ...output,
+      createdAt: Timestamp.now(),
+    };
+    const updatedAiOutputs = [...aiOutputs, newAiOutput];
+    setMockData({ aiOutputs: updatedAiOutputs });
+    return newId;
+  }
+
+  // --- SAFETY CHECK ---
+  if (!db) {
+     throw new Error("AI storage failed: Database connection is missing (db is null).");
+  }
+
+  const docRef = await addDoc(collection(db, 'aiOutputs'), {
+    ...output,
+    createdAt: serverTimestamp(),
+  });
+  return docRef.id;
+};
+
+export const getLatestAIOutput = async (userId: string, assignmentId: string, featureName: string): Promise<AiOutput | null> => {
+  if (isDevBypass) {
+    const { aiOutputs } = getMockData();
+    const outputs = aiOutputs
+      .filter(o => o.userId === userId && o.assignmentId === assignmentId && o.featureName === featureName)
+      .sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
+    return outputs.length > 0 ? outputs[0] : null;
+  }
+
+  const q = query(
+    collection(ensureDb(), 'aiOutputs'),
+    where('userId', '==', userId),
+    where('assignmentId', '==', assignmentId),
+    where('featureName', '==', featureName),
+    orderBy('createdAt', 'desc'),
+    limit(1)
+  );
+
+  const querySnapshot = await getDocs(q);
+  if (querySnapshot.empty) {
+    return null;
+  }
+
+  const doc = querySnapshot.docs[0];
+  return { id: doc.id, ...doc.data() } as AiOutput;
+}
+
 export const addAiOutput = async (
     userId: string,
     assignmentId: string,

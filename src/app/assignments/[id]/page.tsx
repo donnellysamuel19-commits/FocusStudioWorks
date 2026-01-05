@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Clock, PlusCircle, CheckCircle, XCircle, PlayCircle, Hourglass, MoreVertical, Edit, Trash2, Info } from 'lucide-react';
+import { Clock, PlusCircle, CheckCircle, XCircle, PlayCircle, Hourglass, MoreVertical, Edit, Trash2, Info, ThumbsUp, ThumbsDown, Sparkles } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useRouter } from 'next/navigation';
@@ -36,6 +36,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { logAnalyticsEvent } from '@/lib/analytics';
 
 export default function AssignmentDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -48,6 +49,10 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [detailedSession, setDetailedSession] = useState<StudySession | null>(null);
+
+  const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
+  const [isAiLoading, setIsAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   const fetchAssignmentData = useCallback(async () => {
     if (!user || !id) return;
@@ -86,6 +91,44 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
   useEffect(() => {
     fetchAssignmentData();
   }, [fetchAssignmentData]);
+
+  const handleGetNextStudyIdea = async () => {
+    if (!user) return;
+    setIsAiLoading(true);
+    setAiError(null);
+    setAiSuggestion(null);
+
+    try {
+      const response = await fetch('/api/nextSprintSuggestionFlow', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ assignmentId: id }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch suggestion.');
+      }
+
+      const { suggestion } = await response.json();
+      setAiSuggestion(suggestion);
+    } catch (error: any) {
+      setAiError(error.message || 'Unable to generate a suggestion right now.');
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
+
+  const handleFeedback = (feedback: 'up' | 'down') => {
+    if(!user || !id) return;
+    logAnalyticsEvent('ai_feature2_feedback', {
+      assignmentId: id,
+      feedbackValue: feedback,
+    });
+    toast({ title: 'Feedback submitted', description: 'Thank you for your feedback!' });
+  };
 
   const handleDeleteSession = () => {
     if (!sessionToDelete) return;
@@ -217,6 +260,45 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
           </p>
         )}
       </div>
+
+      <Card className="mb-6">
+        <CardHeader>
+            <CardTitle>Next Sprint Suggestion</CardTitle>
+        </CardHeader>
+        <CardContent>
+            {sessions.length === 0 ? (
+                <p className="text-muted-foreground">Complete at least one study sprint to receive suggestions.</p>
+            ) : (
+                <div className="space-y-4">
+                <Button onClick={handleGetNextStudyIdea} disabled={isAiLoading}>
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    {isAiLoading ? 'Generating...' : 'Get Next Study Idea'}
+                </Button>
+                {aiSuggestion && (
+                    <Card className="bg-secondary/50">
+                    <CardHeader>
+                        <CardTitle className="text-lg">AI Suggested Next Sprint (Optional)</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p>{aiSuggestion}</p>
+                        <div className="flex justify-end gap-2 mt-4">
+                        <Button variant="ghost" size="icon" onClick={() => handleFeedback('up')}>
+                            <ThumbsUp className="h-5 w-5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => handleFeedback('down')}>
+                            <ThumbsDown className="h-5 w-5" />
+                        </Button>
+                        </div>
+                    </CardContent>
+                    </Card>
+                )}
+                {aiError && (
+                    <p className="text-red-500">{aiError}</p>
+                )}
+                </div>
+            )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
