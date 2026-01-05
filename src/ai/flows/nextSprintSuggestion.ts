@@ -1,10 +1,37 @@
+'use server';
+
+/**
+ * Feature 2 — Next Sprint Suggestion (Genkit)
+ * Uses definePrompt + defineFlow (same pattern as Feature 1)
+ */
 
 import { ai } from '@/ai/genkit';
-import * as z from 'zod';
-import { getStudySessionsForAssignment, saveAIOutput, getLatestAIOutput } from '../../lib/firebase/firestore';
-import { StudySession } from '../../types';
+import { z } from 'zod';
 
-const nextSprintSuggestionSystemInstruction = `You are assisting a study sprint app called FocusSprint.
+// Keep schemas NOT exported (avoids Next serialization weirdness)
+const NextSprintSuggestionInputSchema = z.object({
+  assignmentId: z.string(),
+  sessions: z
+    .array(
+      z.object({
+        targetObject: z.string().optional().default(''),
+        nextAction: z.string().optional().default(''),
+        sprintDeliverable: z.string().optional().default(''),
+        durationMinutes: z.number().optional().default(0),
+        state: z.string().optional().default(''),
+        outcome: z.string().optional().default(''),
+        optionalBlockerNote: z.string().optional().default(''),
+        createdAtMillis: z.number().optional().default(0),
+      })
+    )
+    .min(1),
+});
+
+const NextSprintSuggestionOutputSchema = z.object({
+  suggestion: z.string().describe('One optional next sprint idea (1–3 sentences).'),
+});
+
+const systemInstruction = `You are assisting a study sprint app called FocusSprint.
 
 Your role is strictly bounded:
 You may ONLY synthesize patterns across past study sessions
@@ -19,7 +46,7 @@ Hard limits:
 
 Tone: neutral, supportive, concise.
 Length: 1–3 sentences max.
-Non-authoritative (‘suggest’, not ‘should’).
+Non-authoritative (“suggest”, not “should”).
 
 Task:
 Analyze the recent study sessions and identify:
@@ -31,50 +58,33 @@ that fits a 10–25 minute session.
 
 If the data is inconclusive, say so and suggest keeping the next sprint small.`;
 
+const nextSprintPrompt = ai.definePrompt({
+  name: 'nextSprintSuggestionPrompt',
+  input: { schema: NextSprintSuggestionInputSchema },
+  output: { schema: NextSprintSuggestionOutputSchema },
+  prompt: `${systemInstruction}
+
+Here are the most recent study sessions (JSON):
+{{{json sessions}}}
+
+Return ONLY the suggestion in the "suggestion" field.`,
+});
+
 export const nextSprintSuggestionFlow = ai.defineFlow(
   {
     name: 'nextSprintSuggestionFlow',
-    inputSchema: z.object({
-      userId: z.string(),
-      assignmentId: z.string(),
-    }),
-    outputSchema: z.string(),
+    inputSchema: NextSprintSuggestionInputSchema,
+    outputSchema: NextSprintSuggestionOutputSchema,
   },
-  async ({ userId, assignmentId }) => {
-    
-    const studySessions = await getStudySessionsForAssignment(userId, assignmentId, 8);
+  async (input) => {
+    const { output } = await nextSprintPrompt(input);
 
-    if (studySessions.length === 0) {
-      return "Complete at least one study sprint to receive suggestions.";
-    }
-
-    const latestSession = studySessions[0];
-    const latestOutput = await getLatestAIOutput(userId, assignmentId, "feature2_next_sprint_suggestion");
-
-    if(latestOutput && latestOutput.createdAt > latestSession.createdAt) {
-      return latestOutput.ai_original;
-    }
-
-    const llmResponse = await ai.generate({
-      prompt: `${JSON.stringify(studySessions)}`,
-      config: {
-        temperature: 0.3,
-      },
-      systemInstruction: {
-        parts: [ {text: nextSprintSuggestionSystemInstruction }]
-      }
-    });
-
-    const suggestion = llmResponse.text();
-
-    await saveAIOutput({
-      userId,
-      assignmentId,
-      featureName: "feature2_next_sprint_suggestion",
-      ai_original: suggestion,
-      createdAt: new Date(),
-    });
-
-    return suggestion;
+    // Hard fallback so your UI never gets empty
+    return {
+      suggestion:
+        output?.suggestion?.trim() ||
+        'Keep the next sprint very small: pick one tiny step you can finish in 10–15 minutes.',
+    };
   }
 );
+
