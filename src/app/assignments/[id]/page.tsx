@@ -52,39 +52,16 @@ import {
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { logAnalyticsEvent } from '@/lib/analytics';
 
-type AISessionPayload = {
+type SessionForAI = {
   targetObject: string;
   nextAction: string;
   sprintDeliverable: string;
   durationMinutes: number;
   state: string;
-  outcome: string | null;
-  optionalBlockerNote: string | null;
+  outcome: string;
+  optionalBlockerNote: string;
   createdAtMillis: number;
 };
-
-function toMillisSafe(s: StudySession): number {
-  // Firestore Timestamp supports .toMillis(); Date supports getTime()
-  const anyCreatedAt: any = (s as any).createdAt;
-  if (!anyCreatedAt) return 0;
-  if (typeof anyCreatedAt.toMillis === 'function') return anyCreatedAt.toMillis();
-  if (typeof anyCreatedAt.toDate === 'function') return anyCreatedAt.toDate()?.getTime?.() ?? 0;
-  if (anyCreatedAt instanceof Date) return anyCreatedAt.getTime();
-  return 0;
-}
-
-function buildSessionsForAI(input: StudySession[], max = 8): AISessionPayload[] {
-  return input.slice(0, max).map((s) => ({
-    targetObject: s.targetObject ?? '',
-    nextAction: s.nextAction ?? '',
-    sprintDeliverable: s.sprintDeliverable ?? '',
-    durationMinutes: typeof s.durationMinutes === 'number' ? s.durationMinutes : 0,
-    state: (s as any).state ?? '',
-    outcome: (s as any).outcome ?? null,
-    optionalBlockerNote: (s as any).optionalBlockerNote ?? null,
-    createdAtMillis: toMillisSafe(s),
-  }));
-}
 
 export default function AssignmentDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -153,31 +130,46 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
     setAiSuggestion(null);
 
     try {
-      if (!Array.isArray(sessions) || sessions.length === 0) {
+      if (sessions.length === 0) {
         throw new Error('Complete at least one study sprint to receive suggestions.');
       }
 
-      // 1) Client-side cache check: if AI output is newer than latest session, reuse it
-      const latestSessionMillis = toMillisSafe(sessions[0]) || 0;
+      const latestSessionMillis =
+        sessions[0]?.createdAt?.toDate?.()?.getTime?.() ??
+        (typeof (sessions[0] as any)?.createdAt?.toMillis === 'function'
+          ? (sessions[0] as any).createdAt.toMillis()
+          : 0);
 
-      // IMPORTANT: only do this if your firestore helper exists and works client-side
-      const latestAi = await getLatestAIOutput(user.uid, id, 'feature2_next_sprint_suggestion').catch(
-        () => null
-      );
+      // 🔒 Best-effort cache read (won’t crash if index isn’t ready yet)
+      try {
+        const latestAi = await getLatestAIOutput(user.uid, id, 'feature2_next_sprint_suggestion');
+        const latestAiMillis =
+          latestAi?.createdAt?.toDate?.()?.getTime?.() ??
+          (typeof (latestAi as any)?.createdAt?.toMillis === 'function'
+            ? (latestAi as any).createdAt.toMillis()
+            : 0);
 
-      const latestAiAny: any = latestAi as any;
-      const latestAiMillis =
-        (latestAiAny?.createdAt?.toMillis?.() ??
-          latestAiAny?.createdAt?.toDate?.()?.getTime?.() ??
-          0) || 0;
-
-      if (latestAiAny?.ai_original && latestAiMillis > latestSessionMillis) {
-        setAiSuggestion(latestAiAny.ai_original);
-        return;
+        if (latestAi?.ai_original && latestAiMillis > latestSessionMillis) {
+          setAiSuggestion(latestAi.ai_original);
+          setIsAiLoading(false);
+          return;
+        }
+      } catch (cacheErr) {
+        console.warn('AI cache read skipped (index/building/etc):', cacheErr);
       }
 
-      // 2) Build minimal payload and call the API route
-      const sessionsForAI = buildSessionsForAI(sessions, 8);
+      const sessionsForAI: SessionForAI[] = sessions.slice(0, 8).map((s) => ({
+        targetObject: s.targetObject ?? '',
+        nextAction: s.nextAction ?? '',
+        sprintDeliverable: s.sprintDeliverable ?? '',
+        durationMinutes: s.durationMinutes ?? 0,
+        state: (s.state as any) ?? '',
+        outcome: s.outcome ?? '',
+        optionalBlockerNote: s.optionalBlockerNote ?? '',
+        createdAtMillis:
+          s.createdAt?.toDate?.()?.getTime?.() ??
+          (typeof (s as any)?.createdAt?.toMillis === 'function' ? (s as any).createdAt.toMillis() : 0),
+      }));
 
       const response = await fetch('/api/nextSprintSuggestionFlow', {
         method: 'POST',
@@ -185,7 +177,6 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
         body: JSON.stringify({ assignmentId: id, sessions: sessionsForAI }),
       });
 
-      // Read body ONCE as text so we don't crash on empty/HTML responses
       const raw = await response.text();
 
       if (!response.ok) {
@@ -200,25 +191,27 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
       }
 
       const data = raw ? JSON.parse(raw) : null;
-      const suggestion = data?.suggestion;
+      const suggestion = (data?.suggestion ?? '').toString().trim();
 
-      if (!suggestion || typeof suggestion !== 'string') {
+      if (!suggestion) {
         throw new Error('AI returned no suggestion.');
       }
 
       setAiSuggestion(suggestion);
 
-      // 3) Save output client-side (same pattern as Feature 1)
-      await saveAIOutput({
-        userId: user.uid,
-        assignmentId: id,
-        featureName: 'feature2_next_sprint_suggestion',
-        ai_original: suggestion,
-        human_edited: '',
-        createdAt: new Date() as any, // firestore.ts can overwrite with serverTimestamp()
-      }).catch((e) => {
-        console.warn('saveAIOutput failed (non-blocking):', e);
-      });
+      // 💾 Best-effort save (won’t crash UI if it fails)
+      try {
+        await saveAIOutput({
+          userId: user.uid,
+          assignmentId: id,
+          featureName: 'feature2_next_sprint_suggestion',
+          ai_original: suggestion,
+          human_edited: '',
+          createdAt: new Date() as any,
+        });
+      } catch (saveErr) {
+        console.warn('AI output save failed (index/building/etc):', saveErr);
+      }
     } catch (error: any) {
       setAiError(error?.message || 'Unable to generate a suggestion right now.');
     } finally {
@@ -317,47 +310,55 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
           A read-only view of your study sprint for &quot;{session.targetObject}&quot;.
         </DialogDescription>
       </DialogHeader>
+
       <div className="space-y-4 text-sm">
         <div className="grid grid-cols-3 gap-2">
           <div className="text-muted-foreground col-span-1">Duration</div>
           <p className="col-span-2">{session.durationMinutes} minutes</p>
         </div>
+
         <div className="grid grid-cols-3 gap-2">
           <div className="text-muted-foreground col-span-1">Next Action</div>
           <p className="col-span-2">{session.nextAction}</p>
         </div>
+
         <div className="grid grid-cols-3 gap-2">
           <div className="text-muted-foreground col-span-1">Deliverable</div>
           <p className="col-span-2">{session.sprintDeliverable}</p>
         </div>
+
         <div className="grid grid-cols-3 gap-2">
           <div className="text-muted-foreground col-span-1">Status</div>
           <div className="col-span-2">
             <Badge variant={getStatusBadgeVariant(session.state)}>{session.state}</Badge>
           </div>
         </div>
+
         {session.startTime?.toDate && (
           <div className="grid grid-cols-3 gap-2">
             <div className="text-muted-foreground col-span-1">Started</div>
             <p className="col-span-2">{format(session.startTime.toDate(), 'PPpp')}</p>
           </div>
         )}
+
         {session.endTime?.toDate && (
           <div className="grid grid-cols-3 gap-2">
             <div className="text-muted-foreground col-span-1">Ended</div>
             <p className="col-span-2">{format(session.endTime.toDate(), 'PPpp')}</p>
           </div>
         )}
-        {(session as any).outcome && (
+
+        {session.outcome && (
           <div className="grid grid-cols-3 gap-2">
             <div className="text-muted-foreground col-span-1">Outcome</div>
-            <p className="col-span-2">{(session as any).outcome}</p>
+            <p className="col-span-2">{session.outcome}</p>
           </div>
         )}
-        {(session as any).optionalBlockerNote && (
+
+        {session.optionalBlockerNote && (
           <div className="grid grid-cols-3 gap-2">
             <div className="text-muted-foreground col-span-1">Blocker</div>
-            <p className="col-span-2 text-destructive/80">{(session as any).optionalBlockerNote}</p>
+            <p className="col-span-2 text-destructive/80">{session.optionalBlockerNote}</p>
           </div>
         )}
       </div>
@@ -498,10 +499,7 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
                               <span>Edit</span>
                             </DropdownMenuItem>
 
-                            <DropdownMenuItem
-                              className="text-red-600"
-                              onSelect={() => setSessionToDelete(session.id)}
-                            >
+                            <DropdownMenuItem className="text-red-600" onSelect={() => setSessionToDelete(session.id)}>
                               <Trash2 className="mr-2 h-4 w-4" />
                               <span>Delete</span>
                             </DropdownMenuItem>

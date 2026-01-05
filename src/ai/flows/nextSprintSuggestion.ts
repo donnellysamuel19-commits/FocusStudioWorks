@@ -2,13 +2,12 @@
 
 /**
  * Feature 2 — Next Sprint Suggestion (Genkit)
- * Uses definePrompt + defineFlow (same pattern as Feature 1)
+ * Matches Feature 1 pattern: definePrompt + defineFlow, then CALL the flow directly from the API route.
  */
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 
-// Keep schemas NOT exported (avoids Next serialization weirdness)
 const NextSprintSuggestionInputSchema = z.object({
   assignmentId: z.string(),
   sessions: z
@@ -70,6 +69,7 @@ Here are the most recent study sessions (JSON):
 Return ONLY the suggestion in the "suggestion" field.`,
 });
 
+// IMPORTANT: ai.defineFlow returns a callable function (same as Feature 1)
 export const nextSprintSuggestionFlow = ai.defineFlow(
   {
     name: 'nextSprintSuggestionFlow',
@@ -79,7 +79,6 @@ export const nextSprintSuggestionFlow = ai.defineFlow(
   async (input) => {
     const { output } = await nextSprintPrompt(input);
 
-    // Hard fallback so your UI never gets empty
     return {
       suggestion:
         output?.suggestion?.trim() ||
@@ -87,4 +86,3 @@ export const nextSprintSuggestionFlow = ai.defineFlow(
     };
   }
 );
-
