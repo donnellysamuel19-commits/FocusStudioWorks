@@ -1,6 +1,5 @@
 
-import { defineFlow, runFlow } from '@genkit-ai/flow';
-import { geminiPro } from 'genkitx-vertexai';
+import { ai } from '@/ai/genkit';
 import * as z from 'zod';
 import { getStudySessionsForAssignment, saveAIOutput, getLatestAIOutput } from '../../lib/firebase/firestore';
 import { StudySession } from '../../types';
@@ -32,7 +31,7 @@ that fits a 10–25 minute session.
 
 If the data is inconclusive, say so and suggest keeping the next sprint small.`;
 
-export const nextSprintSuggestionFlow = defineFlow(
+export const nextSprintSuggestionFlow = ai.defineFlow(
   {
     name: 'nextSprintSuggestionFlow',
     inputSchema: z.object({
@@ -56,7 +55,7 @@ export const nextSprintSuggestionFlow = defineFlow(
       return latestOutput.ai_original;
     }
 
-    const llmResponse = await geminiPro.generate({
+    const llmResponse = await ai.generate({
       prompt: `${JSON.stringify(studySessions)}`,
       config: {
         temperature: 0.3,
